@@ -82,6 +82,7 @@ func validateTeamIdAndAlias(teamId string, teamAlias string) bool {
 func createNewTeam(teamId string, teamAlias string) {
 	team := teamData{ID: teamId, Alias: teamAlias}
 	sarpConfig.Team = append(sarpConfig.Team, team)
+	configUpdated = true
 }
 
 func validateImage(imageName string) bool {

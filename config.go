@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"io/ioutil"
 	"log"
 	"time"
@@ -96,4 +97,12 @@ func checkConfig() {
 			sarpConfig.Alternate.Map[ID] = true
 		}
 	}
+}
+
+func updateConfig() {
+	var (
+		confBuffer bytes.Buffer
+	)
+	toml.NewEncoder(&confBuffer).Encode(sarpConfig)
+	ioutil.WriteFile("./sarpedon.conf", confBuffer.Bytes(), 0)
 }
