@@ -18,7 +18,7 @@ func validateUpdate(plainUpdate string) error {
 		}
 	}
 
-	if sarpConfig.allow_new_team == true {
+	if sarpConfig.AllowNewTeam == true {
 		if splitUpdate[0] != "team" || splitUpdate[12] != "team_alias" {
 			return errors.New("Invalid team specified")
 		}

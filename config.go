@@ -10,15 +10,16 @@ import (
 )
 
 type config struct {
-	Event       string
-	Password    string
-	PlayTime    string
-	Timezone    string
-	DiscordHook string
-	Admin       []adminData
-	Image       []imageData
-	Team        []teamData
-	Alternate   alternateData
+	Event        string
+	Password     string
+	PlayTime     string
+	Timezone     string
+	DiscordHook  string
+	Admin        []adminData
+	Image        []imageData
+	Team         []teamData
+	Alternate    alternateData
+	AllowNewTeam bool
 }
 
 func readConfig(conf *config) {

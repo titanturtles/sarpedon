@@ -33,7 +33,7 @@ func getTeam(teamProp string) teamData {
 	}
 
 	configUpdated = true
-	team := teamData{ID: teamId}
+	team := teamData{ID: teamProp}
 	sarpConfig.Team = append(sarpConfig.Team, team)
 	return team
 
