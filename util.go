@@ -31,7 +31,13 @@ func getTeam(teamProp string) teamData {
 			return team
 		}
 	}
-	return teamData{}
+
+	configUpdated = true
+	team := teamData{ID: teamId}
+	sarpConfig.Team = append(sarpConfig.Team, team)
+	return team
+
+	// return teamData{}
 }
 
 func getImage(imageName string) imageData {
