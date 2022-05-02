@@ -283,10 +283,6 @@ func viewAnnounce(c *gin.Context) {
 	c.HTML(http.StatusOK, "announce.html", pageData(c, "announcements", gin.H{"announcements": allAnnouncements}))
 }
 
-func updateConfig() {
-
-}
-
 func scoreUpdate(c *gin.Context) {
 	if !acceptingScores {
 		c.JSON(200, gin.H{"status": "DISABLED"})
