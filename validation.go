@@ -8,7 +8,7 @@ import (
 )
 
 func validateUpdate(plainUpdate string) error {
-	splitUpdate := strings.Split(plainUpdate, delimiter)[:12]
+	splitUpdate := strings.Split(plainUpdate, delimiter)
 
 	fmt.Println("Validate update", plainUpdate)
 
@@ -18,8 +18,19 @@ func validateUpdate(plainUpdate string) error {
 		}
 	}
 
-	if splitUpdate[0] != "team" || !validateTeam(splitUpdate[1]) {
-		return errors.New("Invalid team specified")
+	if sarpConfig.allow_new_team == true {
+		if splitUpdate[0] != "team" || splitUpdate[12] != "team_alias" {
+			return errors.New("Invalid team specified")
+		}
+		if !validateTeamId(splitUpdate[1]) {
+			createNewTeam(splitUpdate[1], splitUpdate[13])
+		} else if !validateTeamIdAndAlias(splitUpdate[1], splitUpdate[13]) {
+			return errors.New("Invalid team specified")
+		}
+	} else {
+		if splitUpdate[0] != "team" || !validateTeam(splitUpdate[1]) {
+			return errors.New("Invalid team specified")
+		}
 	}
 
 	if splitUpdate[2] != "image" || !validateImage(splitUpdate[3]) {
@@ -48,6 +59,29 @@ func validateTeam(teamName string) bool {
 		}
 	}
 	return false
+}
+
+func validateTeamId(teamId string) bool {
+	for _, team := range sarpConfig.Team {
+		if team.ID == teamId {
+			return true
+		}
+	}
+	return false
+}
+
+func validateTeamIdAndAlias(teamId string, teamAlias string) bool {
+	for _, team := range sarpConfig.Team {
+		if team.ID == teamId && team.Alias == teamAlias {
+			return true
+		}
+	}
+	return false
+}
+
+func createNewTeam(teamId string, teamAlias string) {
+	team := teamData{ID: teamId, Alias: teamAlias}
+	sarpConfig.Team = append(sarpConfig.Team, team)
 }
 
 func validateImage(imageName string) bool {

@@ -11,6 +11,8 @@ import (
 )
 
 func parseUpdate(cryptUpdate string) (scoreEntry, error) {
+	// fmt.Println("Parse update", cryptUpdate)
+
 	if cryptUpdate == "" || !validateString(cryptUpdate) {
 		return scoreEntry{}, errors.New("Empty or invalid characters in cryptUpdate.")
 	}
