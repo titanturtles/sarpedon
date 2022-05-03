@@ -58,7 +58,13 @@ func validateTeam(teamName string) bool {
 			return true
 		}
 	}
-	return false
+
+	if sarpConfig.AllowNewTeam == true {
+		createNewTeamId((teamName))
+		return true
+	} else {
+		return false
+	}
 }
 
 func validateTeamId(teamId string) bool {
@@ -79,10 +85,18 @@ func validateTeamIdAndAlias(teamId string, teamAlias string) bool {
 	return false
 }
 
-func createNewTeam(teamId string, teamAlias string) {
+func createNewTeam(teamId string, teamAlias string) teamData {
 	team := teamData{ID: teamId, Alias: teamAlias}
 	sarpConfig.Team = append(sarpConfig.Team, team)
-	configUpdated = true
+	updateConfig()
+	return team
+}
+
+func createNewTeamId(teamId string) teamData {
+	team := teamData{ID: teamId}
+	sarpConfig.Team = append(sarpConfig.Team, team)
+	updateConfig()
+	return team
 }
 
 func validateImage(imageName string) bool {

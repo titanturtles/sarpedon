@@ -32,12 +32,12 @@ func getTeam(teamProp string) teamData {
 		}
 	}
 
-	configUpdated = true
-	team := teamData{ID: teamProp}
-	sarpConfig.Team = append(sarpConfig.Team, team)
-	return team
-
-	// return teamData{}
+	if sarpConfig.AllowNewTeam == true {
+		team := createNewTeamId(teamProp)
+		return team
+	} else {
+		return teamData{}
+	}
 }
 
 func getImage(imageName string) imageData {
