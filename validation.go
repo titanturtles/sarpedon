@@ -26,13 +26,8 @@ func validateUpdate(plainUpdate string) error {
 		}
 	}
 
-	if sarpConfig.AllowNewTeam == true {
-		if splitUpdate[0] != "team" || splitUpdate[12] != "team_alias" {
-			return errors.New("Invalid team specified")
-		}
-		if !validateTeamId(splitUpdate[1]) {
-			createNewTeam(splitUpdate[1], splitUpdate[13])
-		} else if !validateTeamIdAndAlias(splitUpdate[1], splitUpdate[13]) {
+	if len(splitUpdate) == 14 {
+		if !validateTeamIdAndAlias(splitUpdate[1], splitUpdate[13]) {
 			return errors.New("Invalid team specified")
 		}
 	} else {
@@ -68,7 +63,7 @@ func validateTeam(teamName string) bool {
 	}
 
 	if sarpConfig.AllowNewTeam == true {
-		createNewTeamId((teamName))
+		createNewTeamId(teamName)
 		return true
 	} else {
 		return false
@@ -86,11 +81,21 @@ func validateTeamId(teamId string) bool {
 
 func validateTeamIdAndAlias(teamId string, teamAlias string) bool {
 	for _, team := range sarpConfig.Team {
-		if team.ID == teamId && team.Alias == teamAlias {
-			return true
+		if team.ID == teamId {
+			if team.Alias == teamAlias {
+				return true
+			} else {
+				return false
+			}
 		}
 	}
-	return false
+
+	if sarpConfig.AllowNewTeam == true {
+		createNewTeam(teamId, teamAlias)
+		return true
+	} else {
+		return false
+	}
 }
 
 func createNewTeam(teamId string, teamAlias string) teamData {
