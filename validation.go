@@ -12,10 +12,10 @@ func validateUpdate(plainUpdate string) error {
 
 	fmt.Println("Validate update", plainUpdate)
 
-	if len(splitUpdate) > 12 {
+	if len(splitUpdate) > 14 {
 		splitUpdate = splitUpdate[:14]
 	}
-	if len(splitUpdate) > 10 {
+	if len(splitUpdate) > 12 {
 		splitUpdate = splitUpdate[:12]
 	}
 
