@@ -12,6 +12,13 @@ func validateUpdate(plainUpdate string) error {
 
 	fmt.Println("Validate update", plainUpdate)
 
+	if len(splitUpdate) > 12 {
+		splitUpdate = splitUpdate[:14]
+	}
+	if len(splitUpdate) > 10 {
+		splitUpdate = splitUpdate[:12]
+	}
+
 	for _, item := range splitUpdate {
 		fmt.Println("item [", item, "]")
 		if !validateString(item) {
