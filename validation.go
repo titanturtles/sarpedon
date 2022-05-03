@@ -13,6 +13,7 @@ func validateUpdate(plainUpdate string) error {
 	fmt.Println("Validate update", plainUpdate)
 
 	for _, item := range splitUpdate {
+		fmt.Println("item [", item, "]")
 		if !validateString(item) {
 			return errors.New("String validation failed for " + item)
 		}
