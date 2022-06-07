@@ -46,8 +46,10 @@
         </div>
     </div>
     <br>
-    {{ if $imageFilter && imageFilter.Filename }}
-    <a href="/assets/{{ $imageFilter.Filename }}">{{ $imageFilter.Filename }}</a>
+    {{ if $imageFilter }}
+        {{ if $imageFilter.Filename }}
+        <a href="/assets/{{ $imageFilter.Filename }}">{{ $imageFilter.Filename }}</a>
+        {{ end }}
     {{ end }}
     <br>
     <table class="table table-borderless table-dark table-hover scoreboard">
