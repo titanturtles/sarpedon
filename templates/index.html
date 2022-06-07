@@ -44,13 +44,13 @@
             </button>
             {{ end }}
         </div>
-    </div>
-    <br>
-    {{ if $imageFilter }}
-        {{ if $imageFilter.Filename }}
-        <a href="/assets/{{ $imageFilter.Filename }}">{{ $imageFilter.Filename }}</a>
+        <br>
+        {{ if $imageFilter }}
+            {{ if $imageFilter.Filename }}
+            <a href="/assets/practiceimages/{{ $imageFilter.Filename }}">{{ $imageFilter.Filename }}</a>
+            {{ end }}
         {{ end }}
-    {{ end }}
+    </div>
     <br>
     <table class="table table-borderless table-dark table-hover scoreboard">
             <thead class="thead-dark">
