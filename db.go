@@ -51,9 +51,9 @@ type adminData struct {
 }
 
 type imageData struct {
-	Name, Color string
-	Records     []scoreEntry
-	Index       int
+	Name, Color, Filename string
+	Records               []scoreEntry
+	Index                 int
 }
 
 type imageShell struct {
