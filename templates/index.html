@@ -45,11 +45,13 @@
             {{ end }}
         </div>
         <br>
+        <p>
         {{ if $imageFilter }}
             {{ if $imageFilter.Filename }}
             <a href="/assets/practiceimages/{{ $imageFilter.Filename }}">{{ $imageFilter.Filename }}</a>
             {{ end }}
         {{ end }}
+        </p>
     </div>
     <br>
     <table class="table table-borderless table-dark table-hover scoreboard">
