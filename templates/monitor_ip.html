@@ -1,0 +1,65 @@
+{{ template "head.html" . }}
+{{ template "nav.html" . }}
+
+<div class="container">
+    <h2>Source IP: {{ .ip }}</h2>
+    <p><a href="/monitor">&larr; Back to Monitor</a></p>
+    <p><i>{{ .updateCount }} score update(s) from {{ .teamCount }} team(s) across {{ .imageCount }} image(s).</i></p>
+    <br>
+
+    <h4>Unregistered Activity From This IP</h4>
+    <p><i>Status checks with a team ID that is not recognized (e.g. a box booted without a valid TeamID.txt).</i></p>
+    <table class="table table-borderless table-dark table-hover scoreboard">
+        <thead class="thead-dark">
+            <th>Image</th>
+            <th>Attempted ID</th>
+            <th>Count</th>
+            <th>First Seen</th>
+            <th>Last Seen</th>
+        </thead>
+        <tbody>
+            {{ range $u := .unregistered }}
+            <tr>
+                <td>{{ $u.Image }}</td>
+                <td>{{ $u.AttemptID }}</td>
+                <td>{{ $u.Count }}</td>
+                <td>{{ $u.FirstSeen.Format "2006-01-02 15:04:05" }}</td>
+                <td>{{ $u.LastSeen.Format "2006-01-02 15:04:05" }}</td>
+            </tr>
+            {{ else }}
+            <tr><td colspan="5"><i>None.</i></td></tr>
+            {{ end }}
+        </tbody>
+    </table>
+
+    <br>
+
+    <h4>Score Reports From This IP</h4>
+    <p><i>Score updates (<code>/update</code>) received from this IP, most recent first (up to 1000). Only
+    reports made since source-IP tracking was enabled appear here.</i></p>
+    <table class="table table-borderless table-dark table-hover scoreboard">
+        <thead class="thead-dark">
+            <th>Time</th>
+            <th>Team</th>
+            <th>Image</th>
+            <th>Found Vulns</th>
+            <th>Points</th>
+        </thead>
+        <tbody>
+            {{ range $s := .updates }}
+            <tr>
+                <td>{{ $s.Time.Format "2006-01-02 15:04:05" }}</td>
+                <td>{{ $s.Team.Alias }} <span class="gray">({{ $s.Team.ID }})</span></td>
+                <td style="color: {{ $s.Image.Color }}">{{ $s.Image.Name }}</td>
+                <td>{{ $s.Vulns.VulnsScored }} / {{ $s.Vulns.VulnsTotal }}</td>
+                <td>{{ $s.Points }}</td>
+            </tr>
+            {{ else }}
+            <tr><td colspan="5"><i>No score reports recorded from this IP yet.</i></td></tr>
+            {{ end }}
+        </tbody>
+    </table>
+    <br>
+</div>
+
+{{ template "feet.html" }}

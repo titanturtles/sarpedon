@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"net/http"
 	"sort"
 	"strconv"
@@ -12,6 +13,18 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
+
+// clientIP returns the source IP from the raw TCP peer (Request.RemoteAddr),
+// deliberately ignoring X-Forwarded-For so a client can't spoof it. Scoring
+// clients connect directly to :4013, so this is their real address. (If
+// sarpedon is ever placed behind a reverse proxy for /update, revisit this.)
+func clientIP(c *gin.Context) string {
+	ip, _, err := net.SplitHostPort(c.Request.RemoteAddr)
+	if err != nil {
+		return c.Request.RemoteAddr
+	}
+	return ip
+}
 
 func errorOut(c *gin.Context, err error) {
 	fmt.Println("ERROR:", err)

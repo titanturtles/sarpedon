@@ -10,7 +10,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func parseUpdate(cryptUpdate string) (scoreEntry, error) {
+func parseUpdate(cryptUpdate, sourceIP string) (scoreEntry, error) {
 	if cryptUpdate == "" || !validateString(cryptUpdate) {
 		return scoreEntry{}, errors.New("Empty or invalid characters in cryptUpdate.")
 	}
@@ -41,11 +41,12 @@ func parseUpdate(cryptUpdate string) (scoreEntry, error) {
 	}
 
 	newEntry := scoreEntry{
-		Time:   time.Now().UTC(),
-		Team:   getTeam(mapUpdate["team"]),
-		Image:  getImage(mapUpdate["image"]),
-		Vulns:  vulns,
-		Points: pointValue,
+		Time:     time.Now().UTC(),
+		Team:     getTeam(mapUpdate["team"]),
+		Image:    getImage(mapUpdate["image"]),
+		Vulns:    vulns,
+		Points:   pointValue,
+		SourceIP: sourceIP,
 	}
 
 	lastRecord, err := getLastScore(&newEntry)

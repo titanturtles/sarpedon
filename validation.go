@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"net"
 	"regexp"
 	"strings"
 
@@ -78,6 +79,10 @@ func validateTeamByID(teamName string) bool {
 		}
 	}
 	return false
+}
+
+func validateIP(ip string) bool {
+	return net.ParseIP(ip) != nil
 }
 
 func validateImage(imageName string) bool {
