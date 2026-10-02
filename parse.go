@@ -199,5 +199,7 @@ func parseScoresIntoTeams(scores []scoreEntry) ([]teamData, error) {
 		return result
 	})
 
+    fmt.Println("parseScoresIntoTeams")
+    fmt.Println(td)
 	return td, nil
 }

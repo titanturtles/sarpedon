@@ -113,7 +113,7 @@ func initDatabase() {
 
 func getAll(teamName, imageName string) []scoreEntry {
 	scores := []scoreEntry{}
-	coll := mongoClient.Database(dbName).Collection("results")
+	coll := mongoClient.Database(dbName).Collection("scores")
 	teamObj := getTeam(teamName)
 	findOptions := options.Find()
 	findOptions.SetSort(bson.D{{"time", 1}})
@@ -149,10 +149,10 @@ func getAll(teamName, imageName string) []scoreEntry {
 
 func initScoreboard() {
 	initDatabase()
-	coll := mongoClient.Database(dbName).Collection("scoreboard")
+	coll := mongoClient.Database(dbName).Collection("tallyboard")
 	err := coll.Drop(mongoCtx)
 	if err != nil {
-		fmt.Println("error dropping scoreboard:", err)
+		fmt.Println("error dropping tallyboard:", err)
 		os.Exit(1)
 	}
 	topBoard, err := getScores()
@@ -176,7 +176,7 @@ func initScoreboard() {
 func getScores() ([]scoreEntry, error) {
 	initDatabase()
 	scores := []scoreEntry{}
-	coll := mongoClient.Database(dbName).Collection("results")
+	coll := mongoClient.Database(dbName).Collection("scores")
 
 	groupStage := bson.D{
 		{"$group", bson.D{
@@ -249,7 +249,7 @@ func getScores() ([]scoreEntry, error) {
 func getTop() ([]scoreEntry, error) {
 	initDatabase()
 	scores := []scoreEntry{}
-	coll := mongoClient.Database(dbName).Collection("scoreboard")
+	coll := mongoClient.Database(dbName).Collection("tallyboard")
 
 	opts := options.Find()
 	cursor, err := coll.Find(context.TODO(), bson.D{}, opts)
@@ -310,7 +310,7 @@ func getScore(teamName, imageName string) []scoreEntry {
 
 func insertScore(newEntry scoreEntry) error {
 	initDatabase()
-	coll := mongoClient.Database(dbName).Collection("results")
+	coll := mongoClient.Database(dbName).Collection("scores")
 	_, err := coll.InsertOne(context.TODO(), newEntry)
 	if err != nil {
 		return err
@@ -320,7 +320,7 @@ func insertScore(newEntry scoreEntry) error {
 
 func replaceScore(newEntry *scoreEntry) error {
 	initDatabase()
-	coll := mongoClient.Database(dbName).Collection("scoreboard")
+	coll := mongoClient.Database(dbName).Collection("tallyboard")
 	_, err := coll.DeleteOne(context.TODO(), bson.D{{"image.name", newEntry.Image.Name}, {"team.id", newEntry.Team.ID}})
 	if err != nil {
 		return err
@@ -335,7 +335,7 @@ func replaceScore(newEntry *scoreEntry) error {
 func getLastScore(newEntry *scoreEntry) (scoreEntry, error) {
 	initDatabase()
 	score := scoreEntry{}
-	coll := mongoClient.Database(dbName).Collection("scoreboard")
+	coll := mongoClient.Database(dbName).Collection("tallyboard")
 	err := coll.FindOne(context.TODO(), bson.D{{"image.name", newEntry.Image.Name}, {"team.id", newEntry.Team.ID}}).Decode(&score)
 	if err != nil {
 		fmt.Println("error finding last score:", err)
@@ -345,7 +345,7 @@ func getLastScore(newEntry *scoreEntry) (scoreEntry, error) {
 
 func insertCompletion(completionRecord *completion) error {
 	initDatabase()
-	coll := mongoClient.Database(dbName).Collection("completion")
+	coll := mongoClient.Database(dbName).Collection("solved")
 	_, err := coll.InsertOne(context.TODO(), completionRecord)
 	if err != nil {
 		return err
@@ -357,7 +357,7 @@ func getCompletion(imageName string) (bool, error) {
 	initDatabase()
 	var result bson.M
 
-	coll := mongoClient.Database(dbName).Collection("completion")
+	coll := mongoClient.Database(dbName).Collection("solved")
 	err := coll.FindOne(context.TODO(), bson.D{{"imagename", imageName}}).Decode(&result)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
@@ -372,7 +372,7 @@ func getCompletion(imageName string) (bool, error) {
 
 func insertAnnouncement(newAnnouncement *announcement) error {
 	initDatabase()
-	coll := mongoClient.Database(dbName).Collection("announcements")
+	coll := mongoClient.Database(dbName).Collection("messages")
 	_, err := coll.InsertOne(context.TODO(), newAnnouncement)
 	return err
 }
@@ -381,7 +381,7 @@ func getAnnouncements() ([]announcement, error) {
 	initDatabase()
 	var result []announcement
 
-	coll := mongoClient.Database(dbName).Collection("announcements")
+	coll := mongoClient.Database(dbName).Collection("messages")
 	cur, err := coll.Find(context.TODO(), bson.D{})
 	if err != nil {
 		return nil, err
@@ -421,7 +421,7 @@ func wipeDatabase() error {
 func clearTeamScore(teamID string) error {
 	initDatabase()
 
-	coll := mongoClient.Database(dbName).Collection("results")
+	coll := mongoClient.Database(dbName).Collection("scores")
 	delResult, err := coll.DeleteMany(context.TODO(), bson.D{{"team.id", teamID}})
 	if err != nil {
 		return err
@@ -430,13 +430,13 @@ func clearTeamScore(teamID string) error {
 		fmt.Println("No result entries were deleted")
 	}
 
-	coll = mongoClient.Database(dbName).Collection("scoreboard")
+	coll = mongoClient.Database(dbName).Collection("tallyboard")
 	delResult, err = coll.DeleteMany(context.TODO(), bson.D{{"team.id", teamID}})
 	if err != nil {
 		return err
 	}
 	if delResult.DeletedCount == 0 {
-		fmt.Println("No scoreboard results were deleted")
+		fmt.Println("No tallyboard results were deleted")
 	}
 
 	return nil
