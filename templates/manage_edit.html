@@ -3,9 +3,12 @@
 <style>
   .step { border:1px solid #3a3f45; border-radius:6px; padding:14px 18px; margin:14px 0; background:#1b1e22; }
   .step h4 { color:#9ec5ff; margin-bottom:12px; }
-  .lvl { border:1px solid #3a3f45; border-radius:6px; padding:10px 14px 4px; margin:10px 0; position:relative; }
-  .lvl .rm { position:absolute; top:6px; right:8px; }
-  .col-form-label.text-right { color:#cfd3d7; }
+  .frow { display:flex; align-items:center; margin:10px 0; }
+  .frow > .flbl { flex:0 0 190px; text-align:right; padding-right:14px; color:#cfd3d7; }
+  .frow > .fin { flex:1 1 auto; }
+  .frow > .fin input[type=number] { max-width:110px; }
+  .lvl { border-top:1px solid #3a3f45; margin-top:12px; padding-top:4px; }
+  .lvlhdr { display:flex; justify-content:space-between; align-items:center; color:#9aa0a6; font-weight:bold; }
 </style>
 <div class="container">
   <h2>Edit PT competition</h2>
@@ -15,17 +18,11 @@
 
     <div class="step">
       <h4>Step 1 &mdash; Name</h4>
-      <div class="form-group row">
-        <label class="col-sm-3 col-form-label text-right">Competition name</label>
-        <div class="col-sm-9"><input class="form-control" name="name" value="{{ .name }}" required></div>
-      </div>
-      <div class="form-group row" style="margin-bottom:0">
-        <label class="col-sm-3 col-form-label text-right">Practice</label>
-        <div class="col-sm-9" style="padding-top:8px">
-          <input type="checkbox" name="practice" id="practice" value="1" style="vertical-align:middle" {{ if .practice }}checked{{ end }}>
-          <label for="practice" style="color:#cfd3d7; margin-left:4px; vertical-align:middle">Label this as practice</label>
-        </div>
-      </div>
+      <div class="frow"><div class="flbl">Competition name</div>
+        <div class="fin"><input class="form-control" name="name" value="{{ .name }}" required></div></div>
+      <div class="frow"><div class="flbl">Practice</div>
+        <div class="fin"><input type="checkbox" name="practice" id="practice" value="1" {{ if .practice }}checked{{ end }}>
+          <label for="practice" style="color:#cfd3d7; margin:0 0 0 6px">Label this as practice</label></div></div>
     </div>
 
     <div class="step">
@@ -34,20 +31,13 @@
       <div id="levels">
         {{ range $i, $l := .levels }}
         <div class="lvl">
-          <button type="button" class="btn btn-sm btn-danger rm" title="Remove level" onclick="this.parentNode.remove()">&times;</button>
+          <div class="lvlhdr"><span>Level {{ increment $i }}: {{ index $l "image" }}</span>
+            <button type="button" class="btn btn-sm btn-danger" title="Remove level" onclick="rmLevel(this)">&times;</button></div>
           <input type="hidden" name="keep{{ increment $i }}" value="{{ index $l "image" }}">
-          <div class="form-group row">
-            <label class="col-sm-3 col-form-label text-right">Current activity</label>
-            <div class="col-sm-9"><input class="form-control" value="{{ index $l "image" }}" readonly></div>
-          </div>
-          <div class="form-group row">
-            <label class="col-sm-3 col-form-label text-right">Replace .pka (optional)</label>
-            <div class="col-sm-9"><input class="form-control" type="file" name="level{{ increment $i }}" accept=".pka"></div>
-          </div>
-          <div class="form-group row" style="margin-bottom:6px">
-            <label class="col-sm-3 col-form-label text-right">Clear %</label>
-            <div class="col-sm-9"><input class="form-control" type="number" name="threshold{{ increment $i }}" value="{{ index $l "threshold" }}" min="1" max="100" style="max-width:110px"></div>
-          </div>
+          <div class="frow"><div class="flbl">Replace .pka (optional)</div>
+            <div class="fin"><input class="form-control" type="file" name="level{{ increment $i }}" accept=".pka"></div></div>
+          <div class="frow"><div class="flbl">Clear %</div>
+            <div class="fin"><input class="form-control" type="number" name="threshold{{ increment $i }}" value="{{ index $l "threshold" }}" min="1" max="100"></div></div>
         </div>
         {{ end }}
       </div>
@@ -61,22 +51,19 @@
   </form>
 </div>
 <script>
+function rmLevel(b){ b.closest('.lvl').remove(); }
 let n = {{ len .levels }};
 function addLevel() {
-  n++;
-  const idx = n;
+  n++; const idx = n;
   const d = document.createElement('div');
   d.className = 'lvl';
   d.innerHTML =
-    '<button type="button" class="btn btn-sm btn-danger rm" title="Remove level" onclick="this.parentNode.remove()">&times;</button>' +
-    '<div class="form-group row">' +
-      '<label class="col-sm-3 col-form-label text-right">New level activity (.pka)</label>' +
-      '<div class="col-sm-9"><input class="form-control" type="file" name="level' + idx + '" accept=".pka" required></div>' +
-    '</div>' +
-    '<div class="form-group row" style="margin-bottom:6px">' +
-      '<label class="col-sm-3 col-form-label text-right">Clear %</label>' +
-      '<div class="col-sm-9"><input class="form-control" type="number" name="threshold' + idx + '" value="100" min="1" max="100" style="max-width:110px"></div>' +
-    '</div>';
+    '<div class="lvlhdr"><span>Level ' + idx + ' (new)</span>' +
+      '<button type="button" class="btn btn-sm btn-danger" title="Remove level" onclick="rmLevel(this)">&times;</button></div>' +
+    '<div class="frow"><div class="flbl">Activity (.pka)</div>' +
+      '<div class="fin"><input class="form-control" type="file" name="level' + idx + '" accept=".pka" required></div></div>' +
+    '<div class="frow"><div class="flbl">Clear %</div>' +
+      '<div class="fin"><input class="form-control" type="number" name="threshold' + idx + '" value="100" min="1" max="100"></div></div>';
   document.getElementById('levels').appendChild(d);
 }
 </script>
