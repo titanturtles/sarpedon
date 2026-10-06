@@ -118,6 +118,7 @@ func manageCreate(c *gin.Context) {
 		}
 		k++
 		mw.WriteField(fmt.Sprintf("threshold%d", k), c.PostForm(fmt.Sprintf("threshold%d", i)))
+		mw.WriteField(fmt.Sprintf("levelname%d", k), c.PostForm(fmt.Sprintf("levelname%d", i)))
 		f, err := fhs[0].Open()
 		if err != nil {
 			continue
@@ -203,6 +204,7 @@ func manageUpdate(c *gin.Context) {
 		}
 		k++
 		mw.WriteField(fmt.Sprintf("threshold%d", k), c.PostForm(fmt.Sprintf("threshold%d", i)))
+		mw.WriteField(fmt.Sprintf("levelname%d", k), c.PostForm(fmt.Sprintf("levelname%d", i)))
 		if hasFile {
 			f, err := fhs[0].Open()
 			if err != nil {
