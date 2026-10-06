@@ -79,6 +79,8 @@ func main() {
 		authRoutes.POST("/manage/action", manageAction)
 		authRoutes.GET("/manage/new", viewManageNew)
 		authRoutes.POST("/manage/new", manageCreate)
+		authRoutes.GET("/manage/edit", viewManageEdit)
+		authRoutes.POST("/manage/edit", manageUpdate)
 		authRoutes.GET("/manage/review", viewReview)
 		authRoutes.GET("/manage/download", manageDownload)
 		authRoutes.POST("/manage/restore", manageRestore)

@@ -145,6 +145,95 @@ func manageCreate(c *gin.Context) {
 	c.Redirect(http.StatusSeeOther, "/manage?msg="+url.QueryEscape("created competition"))
 }
 
+func viewManageEdit(c *gin.Context) {
+	comp := c.Query("comp")
+	if comp == "" {
+		c.Redirect(http.StatusSeeOther, "/manage")
+		return
+	}
+	var ac struct {
+		Comp   string                   `json:"comp"`
+		Name   string                   `json:"name"`
+		Levels []map[string]interface{} `json:"levels"`
+	}
+	if err := lvGetJSON("/admin/agentconfig?comp="+url.QueryEscape(comp), &ac); err != nil {
+		c.HTML(http.StatusOK, "manage.html", pageData(c, "Competitions", gin.H{"err": err.Error()}))
+		return
+	}
+	practice := false
+	var comps struct {
+		Competitions []map[string]interface{} `json:"competitions"`
+	}
+	if lvGetJSON("/admin/competitions", &comps) == nil {
+		for _, cp := range comps.Competitions {
+			if id, _ := cp["id"].(string); id == comp {
+				if p, ok := cp["practice"].(bool); ok {
+					practice = p
+				}
+			}
+		}
+	}
+	c.HTML(http.StatusOK, "manage_edit.html", pageData(c, "Edit Competition", gin.H{
+		"comp": comp, "name": ac.Name, "practice": practice, "levels": ac.Levels}))
+}
+
+func manageUpdate(c *gin.Context) {
+	comp := c.PostForm("comp")
+	fail := func(m string) {
+		c.HTML(http.StatusOK, "manage.html", pageData(c, "Competitions", gin.H{"err": m}))
+	}
+	if err := c.Request.ParseMultipartForm(512 << 20); err != nil {
+		fail(err.Error())
+		return
+	}
+	var buf bytes.Buffer
+	mw := multipart.NewWriter(&buf)
+	mw.WriteField("comp", comp)
+	mw.WriteField("name", c.PostForm("name"))
+	if c.PostForm("practice") != "" {
+		mw.WriteField("practice", "1")
+	}
+	k := 0
+	for i := 1; i <= 50; i++ {
+		fhs := c.Request.MultipartForm.File[fmt.Sprintf("level%d", i)]
+		hasFile := len(fhs) > 0 && fhs[0].Filename != ""
+		keep := c.PostForm(fmt.Sprintf("keep%d", i))
+		if !hasFile && keep == "" {
+			continue
+		}
+		k++
+		mw.WriteField(fmt.Sprintf("threshold%d", k), c.PostForm(fmt.Sprintf("threshold%d", i)))
+		if hasFile {
+			f, err := fhs[0].Open()
+			if err != nil {
+				continue
+			}
+			fw, _ := mw.CreateFormFile(fmt.Sprintf("level%d", k), fhs[0].Filename)
+			io.Copy(fw, f)
+			f.Close()
+		} else {
+			mw.WriteField(fmt.Sprintf("keep%d", k), keep)
+		}
+	}
+	mw.Close()
+	if k == 0 {
+		fail("A competition needs at least one level.")
+		return
+	}
+	resp, err := lvDo("POST", "/admin/update", &buf, mw.FormDataContentType())
+	if err != nil {
+		fail(err.Error())
+		return
+	}
+	defer resp.Body.Close()
+	b, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != 200 {
+		fail(strings.TrimSpace(string(b)))
+		return
+	}
+	c.Redirect(http.StatusSeeOther, "/manage?msg="+url.QueryEscape("updated "+comp))
+}
+
 func viewReview(c *gin.Context) {
 	comp := c.Query("comp")
 	if comp == "" {

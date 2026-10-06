@@ -1,13 +1,22 @@
 {{ template "head.html" . }}
 {{ template "nav.html" . }}
+<style>
+  .actions { white-space: nowrap; }
+  .actions form { display: inline-block; margin: 0; }
+  .actions .btn { margin: 1px; vertical-align: middle; font-size: .78rem; padding: .2rem .55rem; min-width: 64px; }
+  .btn-tt { background:#2f5e97; border-color:#2f5e97; color:#fff; }
+  .btn-tt:hover, .btn-tt:focus { background:#274e80; border-color:#274e80; color:#fff; }
+  .btn-darkred { background:#7d1515; border-color:#7d1515; color:#fff; }
+  .btn-darkred:hover, .btn-darkred:focus { background:#651010; border-color:#651010; color:#fff; }
+</style>
 <div class="container">
-    <h2>Competitions</h2>
+    <h2>PT Competitions</h2>
     {{ if .err }}<center><br><p style="color:#e66">{{ .err }}</p></center>{{ end }}
     {{ if .msg }}<center><br><p style="color:lightgreen">{{ .msg }}</p></center>{{ end }}
-    <p><a class="btn btn-primary" href="/manage/new">+ New competition</a></p>
+    <p><a class="btn btn-tt" href="/manage/new">+ New PT competition</a></p>
     <table class="table table-dark table-striped">
       <thead><tr>
-        <th>Name</th><th>Id</th><th>Levels</th><th>Default</th><th>Hidden</th><th>Practice</th><th>Subs</th><th>Actions</th>
+        <th>Name</th><th>Id</th><th># Levels</th><th>Default</th><th>Hidden</th><th>Practice</th><th>Subs</th><th>Actions</th>
       </tr></thead>
       <tbody>
       {{ range .comps }}
@@ -19,19 +28,20 @@
           <td>{{ if .hidden }}yes{{ end }}</td>
           <td>{{ if .practice }}practice{{ end }}</td>
           <td>{{ .submissions }}</td>
-          <td>
-            <a class="btn btn-sm btn-secondary" href="/manage/review?comp={{ .id }}">Review</a>
-            <form style="display:inline" method="POST" action="/manage/action">
+          <td class="actions">
+            <a class="btn btn-tt" href="/manage/edit?comp={{ .id }}">Edit</a>
+            <a class="btn btn-tt" href="/manage/review?comp={{ .id }}">Review</a>
+            <form method="POST" action="/manage/action">
               <input type="hidden" name="comp" value="{{ .id }}"><input type="hidden" name="action" value="default">
-              <button class="btn btn-sm btn-info">Default</button>
+              <button class="btn btn-tt">Default</button>
             </form>
-            <form style="display:inline" method="POST" action="/manage/action">
+            <form method="POST" action="/manage/action">
               <input type="hidden" name="comp" value="{{ .id }}"><input type="hidden" name="action" value="{{ if .hidden }}show{{ else }}hide{{ end }}">
-              <button class="btn btn-sm btn-warning">{{ if .hidden }}Show{{ else }}Hide{{ end }}</button>
+              <button class="btn btn-tt">{{ if .hidden }}Show{{ else }}Hide{{ end }}</button>
             </form>
-            <form style="display:inline" method="POST" action="/manage/action" onsubmit="return confirm('Remove {{ .id }}? Level files + scoreboard images are deleted; student submissions are kept.')">
+            <form method="POST" action="/manage/action" onsubmit="return confirm('Remove {{ .id }}? Level files + scoreboard images are deleted; student submissions are kept.')">
               <input type="hidden" name="comp" value="{{ .id }}"><input type="hidden" name="action" value="remove">
-              <button class="btn btn-sm btn-danger">Remove</button>
+              <button class="btn btn-darkred">Remove</button>
             </form>
           </td>
         </tr>
