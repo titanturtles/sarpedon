@@ -10,6 +10,34 @@ import (
 	"github.com/pkg/errors"
 )
 
+// decryptUpdate tries each image's per-image password first (so one image's leaked key
+// can't forge another's score), then the global password. Returns plaintext + key used.
+func decryptUpdate(crypt string) (string, string, error) {
+	for _, img := range sarpConfig.Image {
+		if img.Password == "" {
+			continue
+		}
+		if p, err := decryptString(img.Password, crypt); err == nil {
+			return p, img.Password, nil
+		}
+	}
+	p, err := decryptString(sarpConfig.Password, crypt)
+	return p, sarpConfig.Password, err
+}
+
+// imageForKey returns the image a per-image key belongs to ("" for the global key).
+func imageForKey(key string) string {
+	if key == sarpConfig.Password {
+		return ""
+	}
+	for _, img := range sarpConfig.Image {
+		if img.Password != "" && img.Password == key {
+			return img.Name
+		}
+	}
+	return ""
+}
+
 func parseUpdate(cryptUpdate, sourceIP string) (scoreEntry, error) {
 	if cryptUpdate == "" || !validateString(cryptUpdate) {
 		return scoreEntry{}, errors.New("Empty or invalid characters in cryptUpdate.")
@@ -18,7 +46,7 @@ func parseUpdate(cryptUpdate, sourceIP string) (scoreEntry, error) {
 	if err != nil {
 		return scoreEntry{}, errors.New("Error decoding hex input.")
 	}
-	plainUpdate, err := decryptString(sarpConfig.Password, cryptUpdate)
+	plainUpdate, key, err := decryptUpdate(cryptUpdate)
 	if err != nil {
 		return scoreEntry{}, err
 	}
@@ -31,11 +59,15 @@ func parseUpdate(cryptUpdate, sourceIP string) (scoreEntry, error) {
 	for i := 0; i < len(splitUpdate)-2; i += 2 {
 		mapUpdate[splitUpdate[i]] = splitUpdate[i+1]
 	}
+	// a per-image key may only submit for its own image (anti-forgery)
+	if ki := imageForKey(key); ki != "" && mapUpdate["image"] != ki {
+		return scoreEntry{}, errors.New("image does not match the per-image key")
+	}
 	pointValue, err := strconv.Atoi(mapUpdate["score"])
 	if err != nil {
 		return scoreEntry{}, err
 	}
-	vulns, err := parseVulns(mapUpdate["vulns"], pointValue)
+	vulns, err := parseVulns(mapUpdate["vulns"], pointValue, key)
 	if err != nil {
 		return scoreEntry{}, err
 	}
@@ -63,14 +95,14 @@ func parseUpdate(cryptUpdate, sourceIP string) (scoreEntry, error) {
 	return newEntry, nil
 }
 
-func parseVulns(vulnText string, imagePoints int) (vulnWrapper, error) {
+func parseVulns(vulnText string, imagePoints int, key string) (vulnWrapper, error) {
 	wrapper := vulnWrapper{}
 	vulnText, err := hexDecode(vulnText)
 	if err != nil {
 		return wrapper, errors.New("Error decoding hex input.")
 	}
 
-	plainVulns, err := decryptString(sarpConfig.Password, vulnText)
+	plainVulns, err := decryptString(key, vulnText)
 	if err != nil {
 		return wrapper, err
 	}

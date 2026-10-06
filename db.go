@@ -65,6 +65,7 @@ type adminData struct {
 
 type imageData struct {
 	Name, Color string
+	Password    string `json:"-" bson:"-"` // optional per-image scoring key; never persisted
 	Records     []scoreEntry
 	Index       int
 }
