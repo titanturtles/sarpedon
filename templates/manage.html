@@ -1,0 +1,42 @@
+{{ template "head.html" . }}
+{{ template "nav.html" . }}
+<div class="container">
+    <h2>Competitions</h2>
+    {{ if .err }}<center><br><p style="color:#e66">{{ .err }}</p></center>{{ end }}
+    {{ if .msg }}<center><br><p style="color:lightgreen">{{ .msg }}</p></center>{{ end }}
+    <p><a class="btn btn-primary" href="/manage/new">+ New competition</a></p>
+    <table class="table table-dark table-striped">
+      <thead><tr>
+        <th>Name</th><th>Id</th><th>Levels</th><th>Default</th><th>Hidden</th><th>Practice</th><th>Subs</th><th>Actions</th>
+      </tr></thead>
+      <tbody>
+      {{ range .comps }}
+        <tr>
+          <td>{{ .name }}</td>
+          <td>{{ .id }}</td>
+          <td>{{ .levels }}</td>
+          <td>{{ if .default }}&#9733;{{ end }}</td>
+          <td>{{ if .hidden }}yes{{ end }}</td>
+          <td>{{ if .practice }}practice{{ end }}</td>
+          <td>{{ .submissions }}</td>
+          <td>
+            <a class="btn btn-sm btn-secondary" href="/manage/review?comp={{ .id }}">Review</a>
+            <form style="display:inline" method="POST" action="/manage/action">
+              <input type="hidden" name="comp" value="{{ .id }}"><input type="hidden" name="action" value="default">
+              <button class="btn btn-sm btn-info">Default</button>
+            </form>
+            <form style="display:inline" method="POST" action="/manage/action">
+              <input type="hidden" name="comp" value="{{ .id }}"><input type="hidden" name="action" value="{{ if .hidden }}show{{ else }}hide{{ end }}">
+              <button class="btn btn-sm btn-warning">{{ if .hidden }}Show{{ else }}Hide{{ end }}</button>
+            </form>
+            <form style="display:inline" method="POST" action="/manage/action" onsubmit="return confirm('Remove {{ .id }}? Level files + scoreboard images are deleted; student submissions are kept.')">
+              <input type="hidden" name="comp" value="{{ .id }}"><input type="hidden" name="action" value="remove">
+              <button class="btn btn-sm btn-danger">Remove</button>
+            </form>
+          </td>
+        </tr>
+      {{ end }}
+      </tbody>
+    </table>
+</div>
+{{ template "feet.html" }}

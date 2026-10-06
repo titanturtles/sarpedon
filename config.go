@@ -9,17 +9,19 @@ import (
 )
 
 type config struct {
-	Event       string
-	Password    string
-	PlayTime    string
-	Timezone    string
-	DiscordHook string
-	Enforce     bool
-	Timeout     int
-	Admin       []adminData
-	Image       []imageData
-	Team        []teamData
-	Alternate   alternateData
+	Event         string
+	Password      string
+	PlayTime      string
+	Timezone      string
+	DiscordHook   string
+	Enforce       bool
+	Timeout       int
+	LevelsvcUrl   string // base URL of the levelsvc competition engine (default http://127.0.0.1:8099)
+	LevelsvcToken string // levelsvc admin token, for the creator web pages
+	Admin         []adminData
+	Image         []imageData
+	Team          []teamData
+	Alternate     alternateData
 }
 
 func readConfig(conf *config) {
@@ -56,6 +58,9 @@ func checkConfig() {
 	} else if sarpConfig.Timeout < 0 {
 		// If a negative value, set no timeout
 		sarpConfig.Timeout = 0
+	}
+	if sarpConfig.LevelsvcUrl == "" {
+		sarpConfig.LevelsvcUrl = "http://127.0.0.1:8099"
 	}
 	for _, image := range sarpConfig.Image {
 		if image.Name == "" {

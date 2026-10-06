@@ -127,7 +127,7 @@ func initDatabase() {
 
 func getAll(teamName, imageName string) []scoreEntry {
 	scores := []scoreEntry{}
-	coll := mongoClient.Database(dbName).Collection("results")
+	coll := mongoClient.Database(dbName).Collection("scores")
 	teamObj := getTeam(teamName)
 	findOptions := options.Find()
 	findOptions.SetSort(bson.D{{"time", 1}})
@@ -190,7 +190,7 @@ func initScoreboard() {
 func getScores() ([]scoreEntry, error) {
 	initDatabase()
 	scores := []scoreEntry{}
-	coll := mongoClient.Database(dbName).Collection("results")
+	coll := mongoClient.Database(dbName).Collection("scores")
 
 	groupStage := bson.D{
 		{"$group", bson.D{
@@ -328,7 +328,7 @@ func getScore(teamName, imageName string) []scoreEntry {
 
 func insertScore(newEntry scoreEntry) error {
 	initDatabase()
-	coll := mongoClient.Database(dbName).Collection("results")
+	coll := mongoClient.Database(dbName).Collection("scores")
 	_, err := coll.InsertOne(context.TODO(), newEntry)
 	if err != nil {
 		return err
@@ -439,7 +439,7 @@ func wipeDatabase() error {
 func clearTeamScore(teamID string) error {
 	initDatabase()
 
-	coll := mongoClient.Database(dbName).Collection("results")
+	coll := mongoClient.Database(dbName).Collection("scores")
 	delResult, err := coll.DeleteMany(context.TODO(), bson.D{{"team.id", teamID}})
 	if err != nil {
 		return err

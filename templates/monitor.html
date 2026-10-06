@@ -20,7 +20,7 @@
             <tr>
                 <td>{{ $conn.Team.Alias }} <span class="gray">({{ $conn.Team.ID }})</span></td>
                 <td style="color: {{ $conn.Image.Color }}">{{ $conn.Image.Name }}</td>
-                <td>{{ if $conn.SourceIP }}{{ $conn.SourceIP }}{{ else }}<span class="gray">N/A</span>{{ end }}</td>
+                <td>{{ if $conn.SourceIP }}<a href="/monitor/ip/{{ $conn.SourceIP }}">{{ $conn.SourceIP }}</a>{{ else }}<span class="gray">N/A</span>{{ end }}</td>
                 <td>{{ $conn.Time.Format "2006-01-02 15:04:05" }}</td>
                 <td>{{ $conn.Points }}</td>
             </tr>
@@ -48,7 +48,7 @@
         <tbody>
             {{ range $u := .unregistered }}
             <tr>
-                <td>{{ $u.SourceIP }}</td>
+                <td><a href="/monitor/ip/{{ $u.SourceIP }}">{{ $u.SourceIP }}</a></td>
                 <td>{{ $u.Image }}</td>
                 <td>{{ $u.AttemptID }}</td>
                 <td>{{ $u.Count }}</td>

@@ -72,7 +72,16 @@ func main() {
 		authRoutes.GET("/settings", viewSettings)
 		authRoutes.POST("/settings", changeSettings)
 		authRoutes.GET("/monitor", viewMonitor)
+		authRoutes.GET("/monitor/ip/:ip", viewMonitorIP)
 		authRoutes.GET("/export", exportCsv)
+		// test-creator competition console (drives levelsvc)
+		authRoutes.GET("/manage", viewManage)
+		authRoutes.POST("/manage/action", manageAction)
+		authRoutes.GET("/manage/new", viewManageNew)
+		authRoutes.POST("/manage/new", manageCreate)
+		authRoutes.GET("/manage/review", viewReview)
+		authRoutes.GET("/manage/download", manageDownload)
+		authRoutes.POST("/manage/restore", manageRestore)
 	}
 
 	fmt.Println("Initializing scoreboard data...")
