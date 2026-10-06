@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"sort"
 	"strconv"
 	"sync"
 	"time"
@@ -70,6 +71,7 @@ func main() {
 		authRoutes.GET("/logout", logout)
 		authRoutes.GET("/settings", viewSettings)
 		authRoutes.POST("/settings", changeSettings)
+		authRoutes.GET("/monitor", viewMonitor)
 		authRoutes.GET("/export", exportCsv)
 	}
 
@@ -230,6 +232,12 @@ func viewTeamImage(c *gin.Context) {
 func getStatus(c *gin.Context) {
 	id, image, err := validateReq(c)
 	if err != nil {
+		// The team ID (or image) is not recognized -- this is what a box
+		// booted without a valid TeamID.txt looks like. Record it so admins
+		// can monitor images being worked without a real team ID.
+		if rErr := recordUnregistered(clientIP(c), c.Param("image"), c.Param("id")); rErr != nil {
+			fmt.Println("Error recording unregistered status check:", rErr)
+		}
 		errorOut(c, err)
 		return
 	}
@@ -267,6 +275,32 @@ func viewSettings(c *gin.Context) {
 	c.HTML(http.StatusOK, "settings.html", pageData(c, "settings", gin.H{"scoring": acceptingScores}))
 }
 
+// viewMonitor is an admin-only page showing the source IP of every team/image
+// that has reported a score (registered connections), plus every status check
+// that arrived without a valid team ID (unregistered activity).
+func viewMonitor(c *gin.Context) {
+	connections, err := getTop()
+	if err != nil {
+		connections = []scoreEntry{}
+		fmt.Println("Error retrieving connections for monitor:", err)
+	}
+	loc, _ := time.LoadLocation(sarpConfig.Timezone)
+	for i := range connections {
+		connections[i].Time = connections[i].Time.In(loc)
+	}
+	sort.SliceStable(connections, func(i, j int) bool {
+		return connections[i].Time.After(connections[j].Time)
+	})
+
+	unreg, err := getUnregistered()
+	if err != nil {
+		unreg = []unregEntry{}
+		fmt.Println("Error retrieving unregistered activity:", err)
+	}
+
+	c.HTML(http.StatusOK, "monitor.html", pageData(c, "monitor", gin.H{"connections": connections, "unregistered": unreg}))
+}
+
 func viewAnnounce(c *gin.Context) {
 	allAnnouncements, err := getAnnouncements()
 	if err != nil {
@@ -284,7 +318,7 @@ func scoreUpdate(c *gin.Context) {
 
 	c.Request.ParseForm()
 	cryptUpdate := c.Request.Form.Get("update")
-	newScore, err := parseUpdate(cryptUpdate)
+	newScore, err := parseUpdate(cryptUpdate, clientIP(c))
 	if err != nil {
 		errorOut(c, err)
 		fmt.Println("Error decrypting update-- maybe your password is wrong?")

@@ -32,6 +32,20 @@ type scoreEntry struct {
 	ElapsedTime    time.Duration `json:"elapsedtime,omitempty"`
 	ElapsedTimeStr string        `json:"elapsedtimestr,omitempty"`
 	CompletionTime time.Time     `json:"completiontime,omitempty"`
+	SourceIP       string        `json:"sourceip,omitempty"`
+}
+
+// unregEntry records a status check that arrived with a team ID sarpedon does
+// not recognize (e.g. an image booted without a valid TeamID.txt). It is keyed
+// on (sourceip, image, attemptid) and counts how often that combination is
+// seen, so admins can spot an image being worked without a real team ID.
+type unregEntry struct {
+	SourceIP  string    `json:"sourceip"`
+	Image     string    `json:"image"`
+	AttemptID string    `json:"attemptid"`
+	Count     int       `json:"count"`
+	FirstSeen time.Time `json:"firstseen"`
+	LastSeen  time.Time `json:"lastseen"`
 }
 
 type vulnWrapper struct {
@@ -211,6 +225,9 @@ func getScores() ([]scoreEntry, error) {
 			{"completiontime", bson.D{
 				{"$last", "$completiontime"},
 			}},
+			{"sourceip", bson.D{
+				{"$last", "$sourceip"},
+			}},
 			{"vulns", bson.D{
 				{"$last", "$vulns"},
 			}},
@@ -228,6 +245,7 @@ func getScores() ([]scoreEntry, error) {
 			{"playtimestr", "$playtimestr"},
 			{"elapsedtimestr", "$elapsedtimestr"},
 			{"completiontime", "$completiontime"},
+			{"sourceip", "$sourceip"},
 			{"vulns", "$vulns"},
 		}},
 	}
@@ -440,4 +458,45 @@ func clearTeamScore(teamID string) error {
 	}
 
 	return nil
+}
+
+// recordUnregistered upserts a status check that failed team validation. It is
+// keyed on (sourceip, image, attemptid) so repeated checks from the same box
+// increment a counter instead of flooding the collection.
+func recordUnregistered(ip, image, attemptID string) error {
+	initDatabase()
+	coll := mongoClient.Database(dbName).Collection("unregistered")
+	now := time.Now().UTC()
+	filter := bson.D{{"sourceip", ip}, {"image", image}, {"attemptid", attemptID}}
+	update := bson.D{
+		{"$inc", bson.D{{"count", 1}}},
+		{"$set", bson.D{{"lastseen", now}}},
+		{"$setOnInsert", bson.D{{"firstseen", now}}},
+	}
+	opts := options.Update().SetUpsert(true)
+	_, err := coll.UpdateOne(context.TODO(), filter, update, opts)
+	return err
+}
+
+// getUnregistered returns all recorded unregistered status checks, most
+// recently seen first, with timestamps converted to the configured timezone.
+func getUnregistered() ([]unregEntry, error) {
+	initDatabase()
+	entries := []unregEntry{}
+	coll := mongoClient.Database(dbName).Collection("unregistered")
+	findOptions := options.Find()
+	findOptions.SetSort(bson.D{{"lastseen", -1}})
+	cursor, err := coll.Find(context.TODO(), bson.D{}, findOptions)
+	if err != nil {
+		return entries, err
+	}
+	if err := cursor.All(context.TODO(), &entries); err != nil {
+		return entries, err
+	}
+	loc, _ := time.LoadLocation(sarpConfig.Timezone)
+	for i := range entries {
+		entries[i].FirstSeen = entries[i].FirstSeen.In(loc)
+		entries[i].LastSeen = entries[i].LastSeen.In(loc)
+	}
+	return entries, nil
 }
