@@ -161,6 +161,11 @@ func viewManageEdit(c *gin.Context) {
 		c.HTML(http.StatusOK, "manage.html", pageData(c, "Competitions", gin.H{"err": err.Error()}))
 		return
 	}
+	for i := range ac.Levels {
+		if s, _ := ac.Levels[i]["levelName"].(string); s == "" {
+			ac.Levels[i]["levelName"] = fmt.Sprintf("Level %d", i+1)
+		}
+	}
 	practice := false
 	var comps struct {
 		Competitions []map[string]interface{} `json:"competitions"`
