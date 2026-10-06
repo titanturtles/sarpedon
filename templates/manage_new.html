@@ -1,8 +1,10 @@
 {{ template "head.html" . }}
 {{ template "nav.html" . }}
 <style>
-  .step { border:1px solid #3a3f45; border-radius:6px; padding:14px 18px; margin:14px 0; background:#1b1e22; max-width:660px; }
+  .step { border:1px solid #3a3f45; border-radius:6px; padding:14px 18px; margin:14px auto; background:#1b1e22; max-width:660px; }
   .step h4 { color:#9ec5ff; margin-bottom:12px; }
+  .rmx { background:none; border:none; color:#9aa0a6; font-size:1.4rem; line-height:1; cursor:pointer; padding:0 2px; }
+  .rmx:hover { color:#e66; }
   .frow { display:flex; align-items:center; margin:10px 0; }
   .frow > .flbl { flex:0 0 190px; text-align:right; padding-right:14px; color:#cfd3d7; }
   .frow > .fin { flex:1 1 auto; }
@@ -47,7 +49,7 @@ function addLevel() {
   d.className = 'lvl';
   d.innerHTML =
     '<div class="lvlhdr"><span>Level ' + idx + '</span>' +
-      '<button type="button" class="btn btn-sm btn-danger" title="Remove level" onclick="rmLevel(this)">&times;</button></div>' +
+      '<button type="button" class="rmx" title="Remove level" onclick="rmLevel(this)">&times;</button></div>' +
     '<div class="frow"><div class="flbl">Level name</div>' +
       '<div class="fin"><input class="form-control" name="levelname' + idx + '" placeholder="e.g. Router Basics"></div></div>' +
     '<div class="frow"><div class="flbl">Activity (.pka)</div>' +

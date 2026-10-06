@@ -163,7 +163,11 @@ func viewManageEdit(c *gin.Context) {
 	}
 	for i := range ac.Levels {
 		if s, _ := ac.Levels[i]["levelName"].(string); s == "" {
-			ac.Levels[i]["levelName"] = fmt.Sprintf("Level %d", i+1)
+			if img, _ := ac.Levels[i]["image"].(string); img != "" {
+				ac.Levels[i]["levelName"] = img
+			} else {
+				ac.Levels[i]["levelName"] = fmt.Sprintf("Level %d", i+1)
+			}
 		}
 	}
 	practice := false
