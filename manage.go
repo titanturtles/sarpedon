@@ -52,6 +52,65 @@ func parseSubName(name string) (string, string) {
 	return "", ""
 }
 
+// aliasFor returns a team's alias from sarpedon.conf (by id, case-insensitive), or "".
+func aliasFor(id string) string {
+	for _, t := range sarpConfig.Team {
+		if strings.EqualFold(t.ID, id) {
+			return t.Alias
+		}
+	}
+	return ""
+}
+
+func isDigits(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+// safeFilePart keeps only filename-safe characters (others become '-').
+func safeFilePart(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		if r == '-' || r == '_' || r == '.' ||
+			(r >= '0' && r <= '9') || (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') {
+			b.WriteRune(r)
+		} else {
+			b.WriteRune('-')
+		}
+	}
+	return b.String()
+}
+
+// aliasFilename rewrites "<teamid>_L<n>[_<ts>].pka" to use the team's alias instead of the
+// id for a friendlier download; falls back to the original name when there's no alias.
+func aliasFilename(name string) string {
+	base := strings.TrimSuffix(name, ".pka")
+	parts := strings.Split(base, "_")
+	li := -1
+	for i, p := range parts {
+		if len(p) >= 2 && p[0] == 'L' && isDigits(p[1:]) {
+			li = i
+			break
+		}
+	}
+	if li <= 0 {
+		return name
+	}
+	teamID := strings.Join(parts[:li], "_")
+	alias := aliasFor(teamID)
+	if alias == "" || strings.EqualFold(alias, teamID) {
+		return name
+	}
+	return safeFilePart(alias) + "_" + strings.Join(parts[li:], "_") + ".pka"
+}
+
 func viewManage(c *gin.Context) {
 	data := gin.H{"msg": c.Query("msg")}
 	if sarpConfig.LevelsvcToken == "" {
@@ -287,6 +346,12 @@ func viewReview(c *gin.Context) {
 			t, n := parseSubName(name)
 			s["team"] = t
 			s["level"] = n
+			s["teamAlias"] = aliasFor(t)
+		}
+	}
+	for _, p := range prog.Progress {
+		if t, ok := p["team"].(string); ok {
+			p["teamAlias"] = aliasFor(t)
 		}
 	}
 	c.HTML(http.StatusOK, "manage_review.html", pageData(c, "Review", gin.H{
@@ -306,7 +371,7 @@ func manageDownload(c *gin.Context) {
 		return
 	}
 	defer resp.Body.Close()
-	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%q", name))
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%q", aliasFilename(name)))
 	c.DataFromReader(resp.StatusCode, resp.ContentLength, "application/octet-stream", resp.Body, nil)
 }
 

@@ -11,7 +11,7 @@
       <tbody>
       {{ range .progress }}
         <tr>
-          <td>{{ .team }}</td><td>{{ .level }}</td><td>{{ .name }}</td><td>{{ .bytes }}</td><td>{{ .modified }}</td>
+          <td>{{ if .teamAlias }}{{ .teamAlias }}{{ else }}{{ .team }}{{ end }}</td><td>{{ .level }}</td><td>{{ .name }}</td><td>{{ .bytes }}</td><td>{{ .modified }}</td>
           <td><a class="btn btn-sm btn-secondary" href="/manage/download?comp={{ $.comp }}&kind=progress&name={{ .name }}">Download</a></td>
         </tr>
       {{ end }}
@@ -24,7 +24,7 @@
       <tbody>
       {{ range .submissions }}
         <tr>
-          <td>{{ .team }}</td><td>{{ .level }}</td><td>{{ .name }}</td><td>{{ .bytes }}</td><td>{{ .modified }}</td>
+          <td>{{ if .teamAlias }}{{ .teamAlias }}{{ else }}{{ .team }}{{ end }}</td><td>{{ .level }}</td><td>{{ .name }}</td><td>{{ .bytes }}</td><td>{{ .modified }}</td>
           <td>
             <a class="btn btn-sm btn-secondary" href="/manage/download?comp={{ $.comp }}&kind=submission&name={{ .name }}">Download</a>
             {{ if and .team .level }}
