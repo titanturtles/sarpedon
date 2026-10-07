@@ -11,7 +11,8 @@
     <h2>PT Competitions</h2>
     {{ if .err }}<center><br><p style="color:#e66">{{ .err }}</p></center>{{ end }}
     {{ if .msg }}<center><br><p style="color:lightgreen">{{ .msg }}</p></center>{{ end }}
-    <p><a class="btn btn-primary" href="/manage/new">+ New PT competition</a></p>
+    <p><a class="btn btn-primary" href="/manage/new">+ New PT competition</a>
+       <a class="btn btn-primary" href="/manage/agent" style="margin-left:6px">App update</a></p>
     <table class="table table-dark table-striped">
       <thead><tr>
         <th>Name</th><th>Id</th><th># Levels</th><th>Default</th><th>Hidden</th><th>Practice</th><th>Visibility</th><th>Subs</th><th>Actions</th>

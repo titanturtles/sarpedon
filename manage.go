@@ -358,6 +358,62 @@ func viewReview(c *gin.Context) {
 		"comp": comp, "submissions": subs.Submissions, "progress": prog.Progress, "msg": c.Query("msg")}))
 }
 
+func viewAgent(c *gin.Context) {
+	var latest struct {
+		Version   string   `json:"version"`
+		Platforms []string `json:"platforms"`
+	}
+	lvGetJSON("/agent/latest", &latest) // best-effort; empty when nothing published yet
+	c.HTML(http.StatusOK, "manage_agent.html", pageData(c, "App Update", gin.H{
+		"version": latest.Version, "platforms": latest.Platforms, "msg": c.Query("msg")}))
+}
+
+func manageAgentPublish(c *gin.Context) {
+	fail := func(m string) {
+		c.HTML(http.StatusOK, "manage_agent.html", pageData(c, "App Update", gin.H{"err": m}))
+	}
+	if err := c.Request.ParseMultipartForm(256 << 20); err != nil {
+		fail(err.Error())
+		return
+	}
+	platform := c.PostForm("platform")
+	version := strings.TrimSpace(c.PostForm("version"))
+	if platform == "" || version == "" {
+		fail("Choose a platform and enter a version.")
+		return
+	}
+	fhs := c.Request.MultipartForm.File["binary"]
+	if len(fhs) == 0 || fhs[0].Filename == "" {
+		fail("Choose the built agent file to upload.")
+		return
+	}
+	var buf bytes.Buffer
+	mw := multipart.NewWriter(&buf)
+	mw.WriteField("platform", platform)
+	mw.WriteField("version", version)
+	f, err := fhs[0].Open()
+	if err != nil {
+		fail("cannot read the uploaded file")
+		return
+	}
+	fw, _ := mw.CreateFormFile("binary", fhs[0].Filename)
+	io.Copy(fw, f)
+	f.Close()
+	mw.Close()
+	resp, err := lvDo("POST", "/admin/agentpublish?platform="+url.QueryEscape(platform)+"&version="+url.QueryEscape(version), &buf, mw.FormDataContentType())
+	if err != nil {
+		fail(err.Error())
+		return
+	}
+	defer resp.Body.Close()
+	b, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != 200 {
+		fail(strings.TrimSpace(string(b)))
+		return
+	}
+	c.Redirect(http.StatusSeeOther, "/manage/agent?msg="+url.QueryEscape("published "+platform+" "+version))
+}
+
 func manageDownload(c *gin.Context) {
 	comp := c.Query("comp")
 	name := c.Query("name")
