@@ -16,11 +16,14 @@
 
   <div class="step">
     <h4>Currently published</h4>
-    <div class="frow"><div class="flbl">Version</div>
-      <div class="fin">{{ if .version }}<b>{{ .version }}</b>{{ else }}<span style="color:#9aa0a6">none yet</span>{{ end }}</div></div>
-    <div class="frow"><div class="flbl">Platforms</div>
-      <div class="fin">{{ if .platforms }}{{ range .platforms }}<span class="badge badge-secondary" style="margin-right:6px">{{ . }}</span>{{ end }}{{ else }}<span style="color:#9aa0a6">&mdash;</span>{{ end }}</div></div>
-    <p style="color:#9aa0a6; padding-left:28px">Students' apps check this on launch and update themselves automatically when the version here is higher than theirs. Publish each platform's build; set the version to match the build's AGENT_VERSION.</p>
+    {{ if .versions }}
+      {{ range $p, $v := .versions }}
+      <div class="frow"><div class="flbl">{{ $p }}</div><div class="fin"><b>{{ $v }}</b></div></div>
+      {{ end }}
+    {{ else }}
+      <div class="frow"><div class="flbl">Builds</div><div class="fin"><span style="color:#9aa0a6">none yet</span></div></div>
+    {{ end }}
+    <p style="color:#9aa0a6; padding-left:28px">Students' apps check this on launch and update themselves when their platform's version here is higher than theirs. Each platform has its own version: publishing one doesn't change another. Set the version to match the build's AGENT_VERSION.</p>
   </div>
 
   <form method="POST" action="/manage/agent" enctype="multipart/form-data">

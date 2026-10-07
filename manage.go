@@ -360,12 +360,11 @@ func viewReview(c *gin.Context) {
 
 func viewAgent(c *gin.Context) {
 	var latest struct {
-		Version   string   `json:"version"`
-		Platforms []string `json:"platforms"`
+		Versions map[string]string `json:"versions"` // platform -> published version
 	}
 	lvGetJSON("/agent/latest", &latest) // best-effort; empty when nothing published yet
 	c.HTML(http.StatusOK, "manage_agent.html", pageData(c, "App Update", gin.H{
-		"version": latest.Version, "platforms": latest.Platforms, "msg": c.Query("msg")}))
+		"versions": latest.Versions, "msg": c.Query("msg")}))
 }
 
 func manageAgentPublish(c *gin.Context) {
