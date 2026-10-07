@@ -25,6 +25,11 @@
       <div class="frow"><div class="flbl">Practice</div>
         <div class="fin"><input type="checkbox" name="practice" id="practice" value="1">
           <label for="practice" style="color:#cfd3d7; margin:0 0 0 6px">Label this as practice</label></div></div>
+      <div class="frow"><div class="flbl">Visibility</div>
+        <div class="fin"><input type="checkbox" name="public" id="public" value="1" checked onchange="toggleVis()">
+          <label for="public" style="color:#cfd3d7; margin:0 0 0 6px">Available to everyone</label></div></div>
+      <div class="frow" id="allowedrow" style="display:none"><div class="flbl">Allowed Team IDs</div>
+        <div class="fin"><textarea class="form-control" name="allowedTeams" rows="4" placeholder="One Team ID per line &mdash; only these teams can open it before release"></textarea></div></div>
     </div>
 
     <div class="step">
@@ -41,6 +46,8 @@
   </form>
 </div>
 <script>
+function toggleVis(){ document.getElementById('allowedrow').style.display = document.getElementById('public').checked ? 'none' : 'flex'; }
+toggleVis();
 function rmLevel(b){ b.closest('.lvl').remove(); }
 let n = 0;
 function addLevel() {

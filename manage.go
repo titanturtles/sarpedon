@@ -110,6 +110,11 @@ func manageCreate(c *gin.Context) {
 	if c.PostForm("practice") != "" {
 		mw.WriteField("practice", "1")
 	}
+	mw.WriteField("vis", "1")
+	if c.PostForm("public") != "" {
+		mw.WriteField("public", "on")
+	}
+	mw.WriteField("allowedTeams", c.PostForm("allowedTeams"))
 	k := 0
 	for i := 1; i <= 30; i++ {
 		fhs := c.Request.MultipartForm.File[fmt.Sprintf("level%d", i)]
@@ -171,6 +176,8 @@ func viewManageEdit(c *gin.Context) {
 		}
 	}
 	practice := false
+	private := false
+	allowed := []string{}
 	var comps struct {
 		Competitions []map[string]interface{} `json:"competitions"`
 	}
@@ -180,11 +187,22 @@ func viewManageEdit(c *gin.Context) {
 				if p, ok := cp["practice"].(bool); ok {
 					practice = p
 				}
+				if p, ok := cp["private"].(bool); ok {
+					private = p
+				}
+				if arr, ok := cp["allowedTeams"].([]interface{}); ok {
+					for _, v := range arr {
+						if s, ok := v.(string); ok {
+							allowed = append(allowed, s)
+						}
+					}
+				}
 			}
 		}
 	}
 	c.HTML(http.StatusOK, "manage_edit.html", pageData(c, "Edit Competition", gin.H{
-		"comp": comp, "name": ac.Name, "practice": practice, "levels": ac.Levels}))
+		"comp": comp, "name": ac.Name, "practice": practice,
+		"private": private, "allowedTeams": strings.Join(allowed, "\n"), "levels": ac.Levels}))
 }
 
 func manageUpdate(c *gin.Context) {
@@ -203,6 +221,11 @@ func manageUpdate(c *gin.Context) {
 	if c.PostForm("practice") != "" {
 		mw.WriteField("practice", "1")
 	}
+	mw.WriteField("vis", "1")
+	if c.PostForm("public") != "" {
+		mw.WriteField("public", "on")
+	}
+	mw.WriteField("allowedTeams", c.PostForm("allowedTeams"))
 	k := 0
 	for i := 1; i <= 50; i++ {
 		fhs := c.Request.MultipartForm.File[fmt.Sprintf("level%d", i)]
