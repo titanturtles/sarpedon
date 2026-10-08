@@ -37,6 +37,8 @@ func (e aiFlagEvent) SourceLabel() string {
 		return "Browser history"
 	case "dns":
 		return "DNS lookup"
+	case "clipboard":
+		return "Clipboard copy"
 	}
 	return e.Source
 }
@@ -56,6 +58,8 @@ func (e aiFlagEvent) Seen() string {
 		return plural(e.Count, "visit")
 	case "dns":
 		return plural(e.Count, "lookup")
+	case "clipboard":
+		return plural(e.Count, "copy")
 	}
 	return fmt.Sprint(e.Count)
 }
@@ -75,7 +79,7 @@ func (t aiFlagTeam) LastSeenAt() time.Time { return time.Unix(t.LastSeen, 0) }
 
 // CheckList is what the agent could check on that computer, e.g. "history: Chrome, Firefox".
 func (t aiFlagTeam) CheckList() string {
-	names := map[string]string{"titles": "window titles", "history": "browser history", "dns": "DNS"}
+	names := map[string]string{"titles": "window titles", "history": "browser history", "dns": "DNS", "clipboard": "clipboard"}
 	keys := []string{}
 	for k := range t.Checks {
 		keys = append(keys, k)
