@@ -86,6 +86,8 @@ func main() {
 		authRoutes.GET("/manage/agent", viewAgent)
 		authRoutes.POST("/manage/agent", manageAgentPublish)
 		authRoutes.GET("/manage/review", viewReview)
+		authRoutes.GET("/manage/ai", viewAIFlags)
+		authRoutes.POST("/manage/ai/clear", manageAIClear)
 		authRoutes.GET("/manage/download", manageDownload)
 		authRoutes.POST("/manage/restore", manageRestore)
 	}

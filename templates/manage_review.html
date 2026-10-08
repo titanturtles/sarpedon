@@ -3,7 +3,7 @@
 <div class="container">
     <h2>Review &mdash; {{ .comp }}</h2>
     {{ if .msg }}<center><p style="color:lightgreen">{{ .msg }}</p></center>{{ end }}
-    <p><a href="/manage">&larr; Competitions</a></p>
+    <p><a href="/manage">&larr; Competitions</a> &nbsp;&middot;&nbsp; <a href="/manage/ai?comp={{ .comp }}">AI-use flags</a></p>
 
     <h4>Paused / live work <small style="color:#999">(updates the moment a student clicks Stop or Save &amp; keep working)</small></h4>
     <table class="table table-dark table-sm">
