@@ -24,6 +24,7 @@ type aiFlagEvent struct {
 	Last     int64  `json:"last"`
 	Count    int    `json:"count"`
 	Level    int    `json:"level"`
+	Full     string `json:"full"` // full captured text (clipboard)
 }
 
 func (e aiFlagEvent) FirstAt() time.Time { return time.Unix(e.First, 0) }

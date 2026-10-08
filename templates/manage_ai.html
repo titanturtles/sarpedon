@@ -37,7 +37,9 @@
           <td>{{ if .Level }}{{ .Level }}{{ end }}</td>
           <td>{{ .SourceLabel }}</td>
           <td>{{ .Service }}</td>
-          <td class="aiev">{{ .Evidence }}</td>
+          <td class="aiev">{{ .Evidence }}{{ if .Full }}
+            <details style="margin-top:4px"><summary style="cursor:pointer; color:#9ec5ff">show full copied text ({{ len .Full }} chars)</summary>
+            <pre style="white-space:pre-wrap; word-break:break-word; max-height:280px; overflow:auto; background:#15171a; border:1px solid #3a3f45; border-radius:4px; padding:8px; margin:6px 0 0; color:#dfe3e7; font-size:0.85em">{{ .Full }}</pre></details>{{ end }}</td>
           <td>{{ .Seen }}</td>
         </tr>
       {{ end }}
