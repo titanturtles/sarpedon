@@ -225,7 +225,6 @@ func consolidateRecords(allRecords []scoreEntry, images []imageData) ([]imageDat
 
 		for _, record := range allRecords {
 			if record.Image.Name == image.Name {
-				record.PlayTime = record.PlayTime.Round(time.Minute)
 
 				tempTimeStr := formatTime(record.PlayTime.Round(time.Minute))
 				record.PlayTimeStr = tempTimeStr[0 : len(tempTimeStr)-3]

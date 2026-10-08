@@ -1,237 +1,200 @@
-<!-- Scores over time on a clock axis in the configured timezone. Each run (a stretch with score updates)
-     keeps its real duration; each idle stretch between runs (no update from any image for GAP_MS) is
-     squeezed into a narrow shaded band labelled with its real length. Lines break across idle time. -->
+<!-- Scores over time, drawn with Apache ECharts 6 (assets/echarts.min.js). Real clock axis in the configured
+     timezone. Idle stretches (no score update from any image for GAP_MS, the same 5 minutes after which calcPlayTime
+     stops counting play time) are axis breaks: squeezed, zigzag-marked, click to open. A thin line holds each image's
+     score across its quiet stretches. Zoom with the slider, Ctrl+scroll or the box-zoom tool; drag to move along. -->
 <br><br><h4>Scores Over Time</h4>
-<p style="color: #bbb; font-size: 0.9em; margin-bottom: 8px">
-    Clock time in <span id="chart-tz">the configured timezone</span>. Idle stretches (no score updates for 10 minutes
-    or more) are squeezed into a narrow shaded band showing how long they lasted; a dashed line carries each score
-    across the gap until its next update.
+<p style="color: #bbb; font-size: 0.9em; margin-bottom: 6px">
+    Clock time in <span id="chart-tz">the configured timezone</span>. Shaded stretches had no score updates for 5 minutes
+    or more (play time pauses there too); long ones are squeezed into zigzag breaks, and clicking one opens it to its real
+    length. Zoom with the slider under the chart,
+    Ctrl&nbsp;+&nbsp;scroll, or the zoom tool at the top right, and drag the chart to move along it.
 </p>
 <noscript>
-    <p style="color: white; text-align: center">The score graph uses Chart.js, and thus doesn't function without JavaScript.</p>
+    <p style="color: white; text-align: center">The score graph needs JavaScript.</p>
 </noscript>
-<canvas id="scoresOverTime"></canvas>
-
+<div id="scoresOverTime" style="width: 100%; height: 480px"></div>
+<script src="/assets/echarts.min.js"></script>
 <script>
 (function () {
     var TZ = {{ .tz }};
-    var GAP_MS = 10 * 60 * 1000;
+    var GAP_MS = 5 * 60 * 1000;
+    // per image: [time (ms), points, accumulated play time (s), elapsed time (s)]
     var series = [
     {{ range $i, $image := .images }}{{ if $i }},{{ end }}
         {name: {{ $image.Name }}, color: {{ if $image.Color }}{{ $image.Color }}{{ else }}"rgb(255, 255, 255)"{{ end }},
-         points: [{{ range $j, $r := $image.Records }}{{ if $j }},{{ end }}[{{ $r.Time.UnixMilli }}, {{ $r.Points }}]{{ end }}]}
+         points: [{{ range $j, $r := $image.Records }}{{ if $j }},{{ end }}[{{ $r.Time.UnixMilli }}, {{ $r.Points }}, {{ $r.PlayTime.Seconds }}, {{ $r.ElapsedTime.Seconds }}]{{ end }}]}
     {{ end }}
     ];
+    var el = document.getElementById("scoresOverTime");
+    if (typeof echarts === "undefined" || !el) return;
 
     function parts(fmt, ms) {
         var o = {};
         fmt.formatToParts(new Date(ms)).forEach(function (p) { o[p.type] = p.value; });
         return o;
     }
-    var wallFmt = new Intl.DateTimeFormat("en-US", {timeZone: TZ, hourCycle: "h23", year: "numeric", month: "2-digit",
-                                                    day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit"});
-    // wall clock minus UTC (ms) at an instant, so ticks land on whole local hours and midnights
-    function tzOffset(ms) {
-        var p = parts(wallFmt, ms);
-        return Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute, +p.second) - Math.floor(ms / 1000) * 1000;
-    }
+    var hmFmt = new Intl.DateTimeFormat("en-US", {timeZone: TZ, hourCycle: "h23", hour: "2-digit", minute: "2-digit"});
     var dayFmt = new Intl.DateTimeFormat("en-US", {timeZone: TZ, month: "short", day: "numeric"});
     var dayYearFmt = new Intl.DateTimeFormat("en-US", {timeZone: TZ, month: "short", day: "numeric", year: "numeric"});
-    var hmFmt = new Intl.DateTimeFormat("en-US", {timeZone: TZ, hourCycle: "h23", hour: "2-digit", minute: "2-digit"});
     var fullFmt = new Intl.DateTimeFormat("en-US", {timeZone: TZ, hourCycle: "h23", year: "numeric", month: "short", day: "numeric",
                                                     hour: "2-digit", minute: "2-digit", second: "2-digit", timeZoneName: "short"});
     var abbr = parts(new Intl.DateTimeFormat("en-US", {timeZone: TZ, timeZoneName: "short"}), Date.now()).timeZoneName;
     document.getElementById("chart-tz").textContent = abbr ? abbr + " (" + TZ + ")" : TZ;
 
+    function hms(sec) {   // matches the score table's HH:MM:SS (hours can pass 99)
+        sec = Math.max(0, Math.round(sec || 0));
+        var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+        return (h < 10 ? "0" : "") + h + ":" + (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
+    }
     function dur(ms) {
         var m = Math.round(ms / 60000), d = Math.floor(m / 1440), h = Math.floor((m % 1440) / 60), mm = m % 60;
         return d >= 3 ? d + "d" : d ? d + "d " + h + "h" : h ? h + "h " + mm + "m" : mm + "m";
     }
+    function esc(s) {
+        return String(s).replace(/[&<>"]/g, function (c) { return {"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]; });
+    }
 
-    // runs: stretches where some image reported at least every GAP_MS; idle stretches lie between them
+    // idle stretches: no image reported for more than GAP_MS
     var all = [];
     series.forEach(function (s) { s.points.forEach(function (p) { all.push(p[0]); }); });
     all.sort(function (a, b) { return a - b; });
-    if (!all.length) return;
-    var runs = [[all[0], all[0]]];
+    if (!all.length) {
+        el.style.height = "auto";
+        el.innerHTML = '<p style="color: #bbb; text-align: center">No score updates yet.</p>';
+        return;
+    }
+    var runs = [[all[0], all[0]]];   // stretches with updates
     for (var i = 1; i < all.length; i++) {
-        if (all[i] - all[i - 1] > GAP_MS) runs.push([all[i], all[i]]);
+        if (all[i] - runs[runs.length - 1][1] >= GAP_MS) runs.push([all[i], all[i]]);
         else runs[runs.length - 1][1] = all[i];
     }
-    var active = runs.reduce(function (sum, r) { return sum + (r[1] - r[0]); }, 0);
-    // display width of one squeezed idle stretch: 4% of the active time, but all of them together at most ~20%
-    var GAP_W = Math.max(Math.min(active * 0.04, active * 0.2 / Math.max(runs.length - 1, 1)), 60000);
-    var MIN_RUN = GAP_W / 2;                          // keep one-update runs from collapsing to nothing
-    var runLen = runs.map(function (r) { return Math.max(r[1] - r[0], MIN_RUN); });
-    var runOff = [], acc = 0;
-    runs.forEach(function (r, k) { if (k) acc += GAP_W; runOff.push(acc); acc += runLen[k]; });
-    var axisLen = acc;
+    var spanDays = (all[all.length - 1] - all[0]) / 86400000;
+    var gaps = runs.slice(1).map(function (r, j) { return [runs[j][1], r[0]]; });
 
-    // real time -> position on the squeezed axis
-    function toX(t) {
-        for (var k = runs.length - 1; k >= 0; k--) {
-            if (t < runs[k][0]) continue;
-            if (t <= runs[k][1] || k === runs.length - 1) return runOff[k] + Math.min(t - runs[k][0], runLen[k]);
-            var idle = runs[k + 1][0] - runs[k][1];       // t falls in the idle stretch after run k
-            return runOff[k] + runLen[k] + GAP_W * (t - runs[k][1]) / idle;
+    // Lay out the axis. A squeezed idle stretch (an axis break) takes an equal share of the visible axis, all of them
+    // together at most 20%. Only stretches that squeezing actually shrinks (to a third or less) are squeezed; shorter
+    // ones keep their real length. Each block between breaks gets at least minFrac of the axis, padded with real idle
+    // time on both sides, so a one-update run is not a hairline between two zigzags.
+    var MARGIN = 60 * 1000;
+    var squeeze = gaps.map(function () { return true; }), blocks, pad, share;
+    for (var k = 0; k <= gaps.length; k++) {   // each pass only un-squeezes, so it settles within gaps.length passes
+        blocks = [[runs[0][0], runs[0][1], -1]];   // [start, end, index of the squeezed gap before it]
+        gaps.forEach(function (g, j) {
+            if (squeeze[j]) blocks.push([g[1], runs[j + 1][1], j]);
+            else blocks[blocks.length - 1][1] = runs[j + 1][1];
+        });
+        var nBreaks = blocks.length - 1, gapFrac = Math.min(0.03 * nBreaks, 0.2);
+        var minFrac = Math.min(0.012, 0.3 / blocks.length), shownTotal = 0;
+        pad = blocks.map(function () { return MARGIN; });
+        for (var m = 0; m < 5; m++) {
+            var shown = 0;
+            blocks.forEach(function (bl, i) { shown += bl[1] - bl[0] + 2 * pad[i]; });
+            shownTotal = shown / (1 - gapFrac);
+            pad = blocks.map(function (bl) { return Math.max(MARGIN, (minFrac * shownTotal - (bl[1] - bl[0])) / 2); });
         }
-        return 0;
+        share = nBreaks ? gapFrac / nBreaks * shownTotal : 0;
+        var changed = false;
+        blocks.forEach(function (bl, i) {
+            if (i === 0) return;
+            var g = gaps[bl[2]];
+            if (g[1] - g[0] - pad[i - 1] - pad[i] < 3 * share) { squeeze[bl[2]] = false; changed = true; }
+        });
+        if (!changed) break;
     }
+    var gapPct = (nBreaks ? 100 * gapFrac / nBreaks : 0).toFixed(3) + "%";
+    var breaks = blocks.slice(1).map(function (bl, i) {
+        var g = gaps[bl[2]];
+        return {start: g[0] + pad[i], end: g[1] - pad[i + 1], gap: gapPct, idle: g[1] - g[0]};
+    });
+    var openIdle = gaps.filter(function (g, j) { return !squeeze[j]; });
 
-    // one solid line per image through its real updates (each point keeps its real time). Where an image
-    // went quiet, a dashed companion line holds its last score across the gap, then steps to the next score.
-    var datasets = [];
+    // one solid line per image through its real updates, plus a thin line holding its score across quiet stretches
+    var chartSeries = [], names = [];
     series.forEach(function (s) {
-        var data = [], held = [];
+        if (!s.points.length) return;
+        var main = [], held = [];
         s.points.forEach(function (p, i) {
             var prev = s.points[i - 1];
-            if (prev && p[0] - prev[0] > GAP_MS) {
-                data.push({x: toX((p[0] + prev[0]) / 2), y: null});
-                held.push({x: toX(prev[0]), y: prev[1]}, {x: toX(p[0]), y: prev[1]},
-                          {x: toX(p[0]), y: p[1]}, {x: toX(p[0]), y: null});
+            if (prev && p[0] - prev[0] >= GAP_MS) {
+                main.push([(p[0] + prev[0]) / 2, null]);
+                held.push([prev[0], prev[1]], [p[0], prev[1]], [p[0], p[1]], [p[0], null]);
             }
-            data.push({x: toX(p[0]), y: p[1], t: p[0]});
+            main.push(p);
         });
-        datasets.push({label: s.name, data: data, borderColor: s.color, backgroundColor: s.color, fill: false,
-                       tension: 0.1, spanGaps: false, pointRadius: s.points.length > 120 ? 0 : 2, pointHoverRadius: 5});
-        datasets.push({label: s.name, data: held, borderColor: s.color, backgroundColor: s.color, fill: false,
-                       tension: 0, spanGaps: false, borderDash: [4, 4], borderWidth: 1.5,
-                       pointRadius: 0, pointHoverRadius: 0, isHeld: true});
+        names.push(s.name);
+        chartSeries.push({id: s.name + "#main", name: s.name, type: "line", data: main, color: s.color,
+                          showSymbol: s.points.length <= 120, symbolSize: 4, lineStyle: {width: 2}, connectNulls: false});
+        if (held.length) {
+            chartSeries.push({id: s.name + "#held", name: s.name, type: "line", data: held, color: s.color,
+                              showSymbol: false, silent: true, lineStyle: {width: 1, opacity: 0.75}, connectNulls: false});
+        }
     });
-
-    // clock ticks inside each run, on whole local minutes/hours/days; a run too short for one gets its start
-    var STEPS = [1, 2, 5, 10, 15, 30, 60, 120, 180, 360, 720, 1440, 2880, 10080, 20160, 43200]
-        .map(function (m) { return m * 60000; });
-    var step = STEPS[STEPS.length - 1];
-    for (var k = 0; k < STEPS.length; k++) {
-        if (axisLen / STEPS[k] <= 8) { step = STEPS[k]; break; }
+    // label each squeezed stretch with its real length (skipped when there are too many to read), and shade the idle
+    // stretches short enough to keep their real length
+    if (breaks.length && breaks.length <= 15) {
+        chartSeries.push({id: "#idle", type: "line", data: [], silent: true, markArea: {
+            silent: true, itemStyle: {color: "rgba(0, 0, 0, 0)"},
+            label: {show: true, position: "insideTop", rotate: 90, distance: 6, color: "#aaa", fontSize: 11},
+            data: breaks.map(function (br) { return [{xAxis: br.start, name: "idle " + dur(br.idle)}, {xAxis: br.end}]; })
+        }});
     }
-    var ticks = [];
-    runs.forEach(function (r) {
-        var off = tzOffset(r[0]), before = ticks.length;
-        for (var t = Math.ceil((r[0] + off) / step) * step - off; t <= r[1]; t += step) ticks.push({value: toX(t), t: t});
-        if (ticks.length === before) ticks.push({value: toX(r[0]), t: r[0]});
-    });
+    if (openIdle.length) {
+        chartSeries.push({id: "#pause", type: "line", data: [], silent: true, markArea: {
+            silent: true, itemStyle: {color: "rgba(255, 255, 255, 0.05)"},
+            data: openIdle.map(function (g) { return [{xAxis: g[0]}, {xAxis: g[1]}]; })
+        }});
+    }
 
-    // labels can't collide: drop any tick closer to the last kept one than a label is wide
-    var spanDays = (all[all.length - 1] - all[0]) / 86400000;
-    var plotPx = Math.max((document.getElementById("scoresOverTime").parentNode.clientWidth || 900) - 70, 200);
-    var labelPx = spanDays > 300 ? 100 : spanDays > 1 ? 75 : 50;
-    ticks.sort(function (p, q) { return p.value - q.value; });
-    var dayOnly = step >= 86400000;      // ticks labelled by date alone: don't repeat a date
-    ticks = ticks.filter(function (tk, i) {
-        var day = dayFmt.format(new Date(tk.t));
-        if (i && (tk.value - this.last < axisLen * labelPx / plotPx || (dayOnly && day === this.day))) return false;
-        this.last = tk.value;
-        this.day = day;
-        return true;
-    }, {});
-
-    // idle stretches, as [from, to] in real time
-    var gaps = [];
-    for (var g = 1; g < runs.length; g++) gaps.push([runs[g - 1][1], runs[g][0]]);
-    var pad = axisLen * 0.02;
-
-    // each idle stretch: a narrow shaded band, an axis-break mark, and its real length written vertically
-    var gapBands = {
-        id: "gapBands",
-        beforeDatasetsDraw: function (chart) {
-            var x = chart.scales.x, a = chart.chartArea, ctx = chart.ctx;
-            ctx.save();
-            var lastLabel = -Infinity, lastMark = -Infinity;
-            gaps.forEach(function (g) {
-                var x1 = x.getPixelForValue(toX(g[0])), x2 = x.getPixelForValue(toX(g[1]));
-                var mid = (x1 + x2) / 2;
-                ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
-                ctx.fillRect(x1, a.top, x2 - x1, a.bottom - a.top);
-                ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
-                ctx.setLineDash([3, 3]);
-                ctx.beginPath();
-                ctx.moveTo(x1, a.top); ctx.lineTo(x1, a.bottom);
-                ctx.moveTo(x2, a.top); ctx.lineTo(x2, a.bottom);
-                ctx.stroke();
-                ctx.setLineDash([]);
-                if (x2 - x1 >= 4 && mid - lastMark >= 18) {  // "//" break mark on the axis line, where it fits
-                    lastMark = mid;
-                    ctx.strokeStyle = "#bbb";
-                    ctx.beginPath();
-                    ctx.moveTo(mid - 7, a.bottom + 5); ctx.lineTo(mid - 1, a.bottom - 5);
-                    ctx.moveTo(mid + 1, a.bottom + 5); ctx.lineTo(mid + 7, a.bottom - 5);
-                    ctx.stroke();
-                }
-                if (x2 - x1 < 13 || mid - lastLabel < 16) return;  // label only where it fits
-                lastLabel = mid;
-                ctx.translate(mid, a.top + 8);
-                ctx.rotate(Math.PI / 2);
-                ctx.fillStyle = "#bbb";
-                ctx.font = "12px sans-serif";
-                ctx.textAlign = "left";
-                ctx.textBaseline = "middle";
-                ctx.fillText("idle " + dur(g[1] - g[0]), 0, 0);
-                ctx.setTransform(1, 0, 0, 1, 0, 0);
-            });
-            ctx.restore();
-        }
-    };
-
-    var grid = {color: "rgba(255, 255, 255, 0.08)"};
-    var config = {
-        type: "line",
-        data: {datasets: datasets},
-        plugins: [gapBands],
-        options: {
-            interaction: {mode: "nearest", intersect: false},
-            scales: {
-                x: {
-                    type: "linear", min: -pad, max: axisLen + pad, grid: grid,
-                    afterBuildTicks: function (scale) { scale.ticks = ticks.slice(); },
-                    ticks: {
-                        color: "#bbb", maxRotation: 0, autoSkip: true, autoSkipPadding: 14,
-                        callback: function (v, i, tk) {
-                            var d = new Date(tk[i].t), day = (spanDays > 300 ? dayYearFmt : dayFmt).format(d);
-                            if (step >= 86400000) return day;
-                            if (spanDays > 1) return [hmFmt.format(d), day];
-                            var prevDay = i ? dayFmt.format(new Date(tk[i - 1].t)) : null;
-                            return day !== prevDay ? [hmFmt.format(d), day] : hmFmt.format(d);
-                        }
-                    }
-                },
-                y: {beginAtZero: true, grid: grid, ticks: {color: "#bbb"},
-                    title: {display: true, text: "Points", color: "#bbb"}}
-            },
-            plugins: {
-                legend: {
-                    labels: {color: "#ddd", filter: function (item, data) { return !data.datasets[item.datasetIndex].isHeld; }},
-                    onClick: function (e, item, legend) {
-                        var chart = legend.chart, on = !chart.isDatasetVisible(item.datasetIndex);
-                        chart.setDatasetVisibility(item.datasetIndex, on);
-                        chart.setDatasetVisibility(item.datasetIndex + 1, on);
-                        chart.update();
-                    }
-                },
-                tooltip: {
-                    filter: function (item) { return !item.dataset.isHeld; },
-                    callbacks: {
-                        title: function (items) { return items.length ? fullFmt.format(new Date(items[0].raw.t)) : ""; },
-                        label: function (item) { return item.dataset.label + ": " + item.parsed.y + " points"; }
-                    }
-                }
+    var muted = "#bbb", grid = "rgba(255, 255, 255, 0.08)";
+    var chart = echarts.init(el, "dark");
+    chart.setOption({
+        backgroundColor: "transparent",
+        legend: {type: "scroll", top: 0, left: 10, right: 110, data: names, textStyle: {color: "#ddd"}},
+        toolbox: {right: 10, top: 0, iconStyle: {borderColor: muted}, feature: {
+            dataZoom: {yAxisIndex: "none", title: {zoom: "Zoom into a box", back: "Undo zoom"}},
+            restore: {title: "Reset zoom"}}},
+        grid: {left: 44, right: 44, top: 48, bottom: 70, containLabel: true},
+        xAxis: {
+            type: "time", breaks: breaks.map(function (br) { return {start: br.start, end: br.end, gap: br.gap}; }),
+            min: all[0] - pad[0], max: all[all.length - 1] + pad[pad.length - 1],
+            breakArea: {show: true, expandOnClick: true, zigzagAmplitude: 2, zigzagMinSpan: 3, zigzagMaxSpan: 8,
+                        itemStyle: {color: "rgba(255, 255, 255, 0.07)", borderColor: "rgba(255, 255, 255, 0.3)", borderWidth: 1,
+                                    borderType: "solid", opacity: 1}},
+            axisLine: {lineStyle: {color: "rgba(255, 255, 255, 0.3)"}},
+            axisLabel: {color: muted, hideOverlap: true, alignMinLabel: "left", alignMaxLabel: "right", formatter: function (v) {
+                var d = new Date(v);
+                return hmFmt.format(d) + "\n" + (spanDays > 300 ? dayYearFmt : dayFmt).format(d);
+            }},
+            splitLine: {show: false}
+        },
+        yAxis: {type: "value", name: "Points", nameTextStyle: {color: muted}, axisLabel: {color: muted},
+                splitLine: {lineStyle: {color: grid}}},
+        dataZoom: [
+            {type: "inside", xAxisIndex: 0, filterMode: "none", zoomOnMouseWheel: "ctrl", moveOnMouseMove: true,
+             moveOnMouseWheel: false},
+            {type: "slider", xAxisIndex: 0, filterMode: "none", height: 22, bottom: 8, textStyle: {color: muted},
+             labelFormatter: function (v) { return dayFmt.format(new Date(v)) + " " + hmFmt.format(new Date(v)); }}
+        ],
+        tooltip: {
+            trigger: "axis", confine: true, axisPointer: {type: "line"},
+            formatter: function (params) {
+                if (!params.length) return "";
+                var t = params[0].axisValue;
+                var rows = params.filter(function (p) {
+                    return /#main$/.test(p.seriesId) && p.value && p.value[1] != null && Math.abs(p.value[0] - t) <= GAP_MS;
+                });
+                var head = "<b>" + fullFmt.format(new Date(t)) + "</b>";
+                if (!rows.length) return head + '<br><span style="color: #999">No score updates near this time</span>';
+                return head + rows.map(function (p) {
+                    var v = p.value;
+                    return "<br>" + p.marker + esc(p.seriesName) + ": <b>" + v[1] + " points</b>" +
+                           '<br><span style="padding-left: 14px; color: #ccc">play time ' + hms(v[2]) +
+                           " &middot; elapsed " + hms(v[3]) + "</span>";
+                }).join("");
             }
-        }
-    };
-
-    window.addEventListener("load", function () {
-        var canvas = document.getElementById("scoresOverTime");
-        var chart = new Chart(canvas.getContext("2d"), config);
-        // hovering an idle band names it, including bands too narrow for a label
-        canvas.addEventListener("mousemove", function (e) {
-            var px = e.clientX - canvas.getBoundingClientRect().left, x = chart.scales.x, hit = null;
-            gaps.forEach(function (g) {
-                if (px >= x.getPixelForValue(toX(g[0])) - 2 && px <= x.getPixelForValue(toX(g[1])) + 2) hit = g;
-            });
-            canvas.title = hit ? "Idle " + dur(hit[1] - hit[0]) + ": " + fullFmt.format(new Date(hit[0])) +
-                                 " to " + fullFmt.format(new Date(hit[1])) : "";
-        });
+        },
+        series: chartSeries
     });
+    window.addEventListener("resize", function () { chart.resize(); });
 })();
 </script>
