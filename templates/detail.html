@@ -120,52 +120,8 @@ pre {
     </tbody>
 </table>
 
-{{ $labels := .labels }}
 {{ $images := .images }}
-
-<!-- Graph of scores over time -->
-<br><br><h4>Scores Over Time (Play Time vs Points)</h4><br>
-<noscript>
-    <p style="color: white; text-align: center">The score graph uses Chart.js, and thus doesn't function without JavaScript.</p>
-</noscript>
-<canvas id="scoresOverTime"></canvas>
-
-<script>
-    var config = {
-        type: 'line',
-        data: {
-            labels: [{{ range $index, $label := $labels }}{{ if $index }} , {{ end }} '{{ $label }}' {{ end }}],
-            datasets: [
-            {{ range $index, $image := $images }}
-            {{ if $index }},{{ end }}
-            {
-                label: '{{ $image.Name }}',
-                {{ if $image.Color }}
-                backgroundColor: '{{ $image.Color }}',
-                borderColor: '{{ $image.Color }}',
-                {{ else }}
-                backgroundColor: 'rgb(255, 255, 255)',
-                borderColor: 'rgb(255, 255, 255)',
-                {{ end }}
-                data: [
-                {{ range $index2, $record := $image.Records }}
-                {{ if $index2 }},{{end}}
-                    {x: '{{ $record.PlayTimeStr }}', y: {{ $record.Points }} }
-                {{ end }} ],
-                fill: false,
-                tension: 0.1
-            }
-            {{ end }}
-            ]
-        }
-    };
-
-    window.onload = function() {
-        var ctx = document.getElementById('scoresOverTime').getContext('2d');
-        window.myLine = new Chart(ctx, config);
-    };
-
-</script>
+{{ template "scorechart.html" . }}
 
 {{ if .user }}
     <br><br>

@@ -191,7 +191,7 @@ func viewTeam(c *gin.Context) {
 		}
 	}
 
-	c.HTML(http.StatusOK, "detail.html", pageData(c, "Scoreboard for "+teamName, gin.H{"data": teamScore, "team": teamData, "labels": labels, "images": images}))
+	c.HTML(http.StatusOK, "detail.html", pageData(c, "Scoreboard for "+teamName, gin.H{"data": teamScore, "team": teamData, "labels": labels, "images": images, "tz": sarpConfig.Timezone}))
 }
 
 func exportCsv(c *gin.Context) {
@@ -241,7 +241,7 @@ func viewTeamImage(c *gin.Context) {
 		}
 	}
 
-	c.HTML(http.StatusOK, "detail.html", pageData(c, "Scoreboard for "+teamName, gin.H{"data": teamScore, "team": teamData, "labels": labels, "images": images, "imageFilter": getImage(imageName)}))
+	c.HTML(http.StatusOK, "detail.html", pageData(c, "Scoreboard for "+teamName, gin.H{"data": teamScore, "team": teamData, "labels": labels, "images": images, "tz": sarpConfig.Timezone, "imageFilter": getImage(imageName)}))
 }
 
 func getStatus(c *gin.Context) {
