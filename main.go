@@ -43,6 +43,8 @@ func main() {
 		"increment": func(num int) int {
 			return num + 1
 		},
+		// local converts a timestamp to the configured timezone for display
+		"local": localTime,
 	})
 
 	r.LoadHTMLGlob("templates/*")

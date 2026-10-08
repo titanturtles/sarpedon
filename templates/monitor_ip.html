@@ -49,8 +49,8 @@
                 <td>{{ $u.Image }}</td>
                 <td>{{ $u.AttemptID }}</td>
                 <td>{{ $u.Count }}</td>
-                <td>{{ $u.FirstSeen.Format "2006-01-02 15:04:05" }}</td>
-                <td>{{ $u.LastSeen.Format "2006-01-02 15:04:05" }}</td>
+                <td>{{ (local $u.FirstSeen).Format "2006-01-02 15:04:05 MST" }}</td>
+                <td>{{ (local $u.LastSeen).Format "2006-01-02 15:04:05 MST" }}</td>
             </tr>
             {{ else }}
             <tr><td colspan="5"><i>None.</i></td></tr>
@@ -74,7 +74,7 @@
         <tbody>
             {{ range $s := .updates }}
             <tr>
-                <td>{{ $s.Time.Format "2006-01-02 15:04:05" }}</td>
+                <td>{{ (local $s.Time).Format "2006-01-02 15:04:05 MST" }}</td>
                 <td>{{ $s.Team.Alias }} <span class="gray">({{ $s.Team.ID }})</span></td>
                 <td style="color: {{ $s.Image.Color }}">{{ $s.Image.Name }}</td>
                 <td>{{ $s.Vulns.VulnsScored }} / {{ $s.Vulns.VulnsTotal }}</td>

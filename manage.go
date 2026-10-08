@@ -354,6 +354,14 @@ func viewReview(c *gin.Context) {
 			p["teamAlias"] = aliasFor(t)
 		}
 	}
+	// levelsvc reports file times in UTC; show them in the configured timezone like every other page
+	for _, rows := range [][]map[string]interface{}{subs.Submissions, prog.Progress} {
+		for _, r := range rows {
+			if m, ok := r["modified"].(string); ok {
+				r["modified"] = localTimestamp(m)
+			}
+		}
+	}
 	c.HTML(http.StatusOK, "manage_review.html", pageData(c, "Review", gin.H{
 		"comp": comp, "submissions": subs.Submissions, "progress": prog.Progress, "msg": c.Query("msg")}))
 }

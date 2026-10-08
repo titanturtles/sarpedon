@@ -21,7 +21,7 @@
                 <td>{{ $conn.Team.Alias }} <span class="gray">({{ $conn.Team.ID }})</span></td>
                 <td style="color: {{ $conn.Image.Color }}">{{ $conn.Image.Name }}</td>
                 <td>{{ if $conn.SourceIP }}<a href="/monitor/ip/{{ $conn.SourceIP }}">{{ $conn.SourceIP }}</a>{{ else }}<span class="gray">N/A</span>{{ end }}</td>
-                <td>{{ $conn.Time.Format "2006-01-02 15:04:05" }}</td>
+                <td>{{ (local $conn.Time).Format "2006-01-02 15:04:05 MST" }}</td>
                 <td>{{ $conn.Points }}</td>
             </tr>
             {{ else }}
@@ -52,8 +52,8 @@
                 <td>{{ $u.Image }}</td>
                 <td>{{ $u.AttemptID }}</td>
                 <td>{{ $u.Count }}</td>
-                <td>{{ $u.FirstSeen.Format "2006-01-02 15:04:05" }}</td>
-                <td>{{ $u.LastSeen.Format "2006-01-02 15:04:05" }}</td>
+                <td>{{ (local $u.FirstSeen).Format "2006-01-02 15:04:05 MST" }}</td>
+                <td>{{ (local $u.LastSeen).Format "2006-01-02 15:04:05 MST" }}</td>
             </tr>
             {{ else }}
             <tr><td colspan="6"><i>No unregistered activity recorded.</i></td></tr>

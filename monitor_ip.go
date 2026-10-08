@@ -141,14 +141,14 @@ func buildTimeline(data gin.H, unreg []unregEntry, updates []scoreEntry) {
 		}
 		bStart := start.Add(time.Duration(i) * bucketDur).In(loc)
 		buckets[i] = ipBucket{
-			Tip:   fmt.Sprintf("%s  -  %.0f event(s)", bStart.Format("01-02 15:04"), counts[i]),
+			Tip:   fmt.Sprintf("%s  -  %.0f event(s)", bStart.Format("01-02 15:04 MST"), counts[i]),
 			Color: colors[lvl],
 		}
 	}
 	data["hasTimeline"] = true
 	data["buckets"] = buckets
-	data["axisStart"] = start.In(loc).Format("2006-01-02 15:04")
-	data["axisEnd"] = end.In(loc).Format("2006-01-02 15:04")
+	data["axisStart"] = start.In(loc).Format("2006-01-02 15:04 MST")
+	data["axisEnd"] = end.In(loc).Format("2006-01-02 15:04 MST")
 	data["bucketDur"] = bucketDur.Round(time.Second).String()
 	data["totalEvents"] = int(totalEvents + 0.5)
 	data["onlineTotal"] = online.Round(time.Minute).String()
