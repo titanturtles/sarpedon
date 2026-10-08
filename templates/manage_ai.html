@@ -21,6 +21,7 @@
   <div class="aisig"><b>Browser history</b> &mdash; the browser recorded a visit to an AI site while a level was running. The strongest sign. Private/incognito windows are not recorded.</div>
   <div class="aisig"><b>DNS lookup</b> (Windows) &mdash; the computer looked up an AI site's address. Built-in features such as Windows Copilot or link prefetching can do this without the student visiting, so treat it as weak on its own.</div>
   <div class="aisig"><b>Clipboard copy</b> &mdash; a large block of text (the task description) was copied to the clipboard or highlighted &mdash; the usual first step of pasting it into an AI. The copied text is shown.</div>
+  <div class="aisig"><b>AI app / CLI</b> &mdash; a locally-run AI tool was running during the level (e.g. opencode, Aider, Cursor, Claude Code, Ollama, LM Studio, or an AI desktop app). The process name is shown. A strong sign.</div>
 
   {{ range .flagged }}
   <div class="aiteam">
