@@ -38,6 +38,9 @@ pre {
 <br>
 {{ end }}
 
+{{ $images := .images }}
+{{ $team := .team }}
+{{ if .data }}
 <!-- Team info -->
 <table class="table table-borderless table-dark table-striped">
     <thead class="thead-dark">
@@ -51,8 +54,6 @@ pre {
         </tr>
     </tbody>
 </table>
-
-{{ $team := .team }}
 
 <!-- Current image scores -->
 <br><h4>Current Image Scores</h4><br>
@@ -119,8 +120,35 @@ pre {
     </tbody>
 </table>
 
-{{ $images := .images }}
 {{ template "scorechart.html" . }}
+{{ else }}
+<p style="color: #aab3bd;">No competition images yet.</p>
+{{ end }}
+
+<!-- PT practice (kept out of the totals and chart above) -->
+{{ if .practice }}
+{{ template "practice_style.html" }}
+<br><h4>Practice Progress</h4>
+<p class="pc-sub">Packet Tracer practice levels; they don't count toward the leaderboard. <a href="/practice">All practice &rarr;</a></p>
+<table class="table table-borderless table-dark table-striped pc-grid">
+    <thead class="thead-dark">
+        <th>Practice</th>
+        <th>Cleared</th>
+        <th>Levels</th>
+    </thead>
+    <tbody>
+        {{ range $p := .practice }}
+        <tr>
+            <td><a href="/practice/{{ $p.Comp.ID }}">{{ $p.Comp.Name }}</a></td>
+            <td><span class="pc-badge {{ $p.Class }}">{{ $p.Done }} / {{ $p.Total }}</span></td>
+            <td style="text-align: left;">{{ range $i, $cell := $p.Cells }}{{ $lv := index $p.Comp.Levels $i }}<span class="pc-chip {{ $cell.Class }}" title="{{ $lv.Name }}{{ if $cell.Started }}: {{ $cell.Pct }}%{{ end }}">L{{ $lv.Level }}{{ if $cell.Started }} {{ $cell.Pct }}%{{ end }}</span>{{ end }}</td>
+        </tr>
+        {{ end }}
+    </tbody>
+</table>
+{{ else if .practiceErr }}
+<p style="color: #aab3bd;">Practice progress is unavailable right now ({{ .practiceErr }}).</p>
+{{ end }}
 
 {{ if .user }}
     <br><br>

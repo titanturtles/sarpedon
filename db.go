@@ -66,6 +66,7 @@ type adminData struct {
 type imageData struct {
 	Name, Color string
 	Password    string `json:"-" bson:"-"` // optional per-image scoring key; never persisted
+	Practice    bool   `json:"-" bson:"-"` // `practice = true`: a PT practice level, kept off the main leaderboard (practice.go)
 	Records     []scoreEntry
 	Index       int
 }

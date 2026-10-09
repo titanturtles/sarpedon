@@ -59,6 +59,8 @@ func main() {
 		})
 		routes.GET("/", viewScoreboard)
 		routes.GET("/announcements", viewAnnounce)
+	routes.GET("/practice", viewPractice)
+	routes.GET("/practice/:comp", viewPracticeComp)
 		routes.GET("/status/:id/:image", getStatus)
 		routes.POST("/login", login)
 		routes.POST("/update", scoreUpdate)
@@ -109,6 +111,7 @@ func viewScoreboard(c *gin.Context) {
 	if err != nil {
 		panic(err)
 	}
+	teamScores, _ = splitPractice(teamScores) // practice levels don't count toward the leaderboard
 	teamData, err := parseScoresIntoTeams(teamScores)
 	if err != nil {
 		panic(err)
@@ -144,8 +147,8 @@ func viewTeam(c *gin.Context) {
 		errorOutGraceful(c, errors.New("Invalid team name: "+teamName))
 		return
 	}
-	teamScore := getScore(teamName, "")
-	if len(teamScore) <= 0 {
+	teamScore, practiceEntries := splitPractice(getScore(teamName, ""))
+	if len(teamScore) <= 0 && len(practiceEntries) <= 0 {
 		errorOutGraceful(c, errors.New("Team doesn't have any image data"))
 		return
 	}
@@ -161,10 +164,22 @@ func viewTeam(c *gin.Context) {
 		errorOutGraceful(c, errors.New("Parsing team scores failed"))
 		return
 	}
+	if teamData.Alias == "" { // a team with practice levels only
+		teamData.Alias = teamName
+		if len(practiceEntries) > 0 {
+			teamData.Alias = practiceEntries[0].Team.Alias
+		}
+	}
+	practice, practiceErr := []compProgress(nil), ""
+	if len(practiceEntries) > 0 {
+		practice, practiceErr = teamPractice(teamData.Alias)
+	}
 	allRecords := getAll(teamName, "")
 	imageCopies := []imageData{}
 	for _, image := range sarpConfig.Image {
-		imageCopies = append(imageCopies, image)
+		if !image.Practice { // practice levels live in the Practice section, not the chart
+			imageCopies = append(imageCopies, image)
+		}
 	}
 	images, labels := consolidateRecords(allRecords, imageCopies)
 	for index := range images {
@@ -193,7 +208,8 @@ func viewTeam(c *gin.Context) {
 		}
 	}
 
-	c.HTML(http.StatusOK, "detail.html", pageData(c, "Scoreboard for "+teamName, gin.H{"data": teamScore, "team": teamData, "labels": labels, "images": images, "tz": sarpConfig.Timezone}))
+	c.HTML(http.StatusOK, "detail.html", pageData(c, "Scoreboard for "+teamName, gin.H{"data": teamScore, "team": teamData, "labels": labels, "images": images, "tz": sarpConfig.Timezone,
+		"practice": practice, "practiceErr": practiceErr}))
 }
 
 func exportCsv(c *gin.Context) {
