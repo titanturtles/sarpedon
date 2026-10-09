@@ -17,7 +17,7 @@
         {{ range $u := .units }}
         <div class="pc-unit">
             <span class="pc-unit-name">{{ if $u.Unit }}Unit {{ $u.Unit }}{{ else }}Other{{ end }}</span>
-            {{ range $cp := $u.Comps }}<a class="pc-key-item" href="/practice/{{ $cp.ID }}">{{ $cp.Name }} <span class="pc-n">{{ len $cp.Levels }} levels</span></a>{{ end }}
+            {{ range $cp := $u.Comps }}<a class="pc-key-item" href="/practice/{{ $cp.ID }}">{{ $cp.Name }} <span class="pc-n">{{ len $cp.Levels }} level{{ if ne (len $cp.Levels) 1 }}s{{ end }}</span></a>{{ end }}
         </div>
         {{ end }}
     </div>

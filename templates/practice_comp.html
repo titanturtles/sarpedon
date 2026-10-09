@@ -10,7 +10,7 @@
     {{ $levels := .comp.Levels }}
     <h2>{{ .comp.Name }}</h2>
     <p class="pc-sub">
-        <a href="/practice">&larr; All practice</a>{{ if .comp.Unit }} &middot; Unit {{ .comp.Unit }}{{ end }} &middot; {{ len $levels }} levels.
+        <a href="/practice">&larr; All practice</a>{{ if .comp.Unit }} &middot; Unit {{ .comp.Unit }}{{ end }} &middot; {{ len $levels }} level{{ if ne (len $levels) 1 }}s{{ end }}.
         Each cell is that team's Packet Tracer completion; &#10003; = cleared.
     </p>
     <ol class="pc-levels">

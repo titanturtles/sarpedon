@@ -59,14 +59,36 @@ type practiceComp struct {
 	Short    string          `json:"-"` // column label, e.g. "13"
 }
 
-var leadNum = regexp.MustCompile(`^\s*(\d+)`)
+// Practice names: "U4.M13. VLANs" (unit 4, NetAcad module 13), "U16. HSRP · FHRP Concepts"
+// (no module number), or the older "13 · VLANs".
+var (
+	unitMod  = regexp.MustCompile(`^\s*U(\d+)\.M(\d+)\.?`)
+	unitOnly = regexp.MustCompile(`^\s*U\d+\.\s*`)
+	leadNum  = regexp.MustCompile(`^\s*(\d+)`)
+)
 
+// compNum is the module number used to order practices within a unit.
 func compNum(name string) int {
+	if m := unitMod.FindStringSubmatch(name); m != nil {
+		n, _ := strconv.Atoi(m[2])
+		return n
+	}
 	if m := leadNum.FindStringSubmatch(name); m != nil {
 		n, _ := strconv.Atoi(m[1])
 		return n
 	}
 	return 1 << 30
+}
+
+// compShort is the practice's column label on /practice: "M13", or a short title.
+func compShort(name string) string {
+	if m := unitMod.FindStringSubmatch(name); m != nil {
+		return "M" + m[2]
+	}
+	if m := leadNum.FindStringSubmatch(name); m != nil {
+		return m[1]
+	}
+	return strings.TrimSpace(strings.SplitN(unitOnly.ReplaceAllString(name, ""), "·", 2)[0]) // "U16. HSRP · …" -> "HSRP"
 }
 
 var (
@@ -97,10 +119,7 @@ func fetchPractices() ([]practiceComp, error) {
 		if !cp.Practice || cp.Hidden || cp.Private || len(cp.Levels) == 0 {
 			continue
 		}
-		cp.Short = strconv.Itoa(compNum(cp.Name))
-		if compNum(cp.Name) == 1<<30 { // unnumbered, e.g. "HSRP · FHRP Concepts" -> "HSRP"
-			cp.Short = strings.TrimSpace(strings.SplitN(cp.Name, "·", 2)[0])
-		}
+		cp.Short = compShort(cp.Name)
 		sort.SliceStable(cp.Levels, func(i, j int) bool { return cp.Levels[i].Level < cp.Levels[j].Level })
 		list = append(list, cp)
 	}
