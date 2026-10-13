@@ -467,8 +467,16 @@ func viewPracticeComp(c *gin.Context) {
 	if terr != nil {
 		series = nil
 	}
+	teamVulns := map[string][]levelVulnView{}
+	if getUser(c) != "" { // admin only: the not-fixed list is an answer key
+		teamList := make([]string, 0, len(rows))
+		for _, r := range rows {
+			teamList = append(teamList, r.Team)
+		}
+		teamVulns = compTeamVulns(*cp, teamList, sc)
+	}
 	c.HTML(http.StatusOK, "practice_comp.html", pageData(c, "Practice: "+cp.Name, gin.H{"comp": cp, "rows": rows,
-		"cat": categoryOf(*cp), "timeline": series, "timelineTeams": nteams}))
+		"cat": categoryOf(*cp), "timeline": series, "timelineTeams": nteams, "teamVulns": teamVulns}))
 }
 
 // teamPractice lists the practices a team has started, for the team page.
@@ -807,8 +815,35 @@ func normVuln(s string) string {
 	return strings.TrimSpace(strings.ReplaceAll(s, "-", "/"))
 }
 
-// practiceVulnViews builds, per practice the team has started, the fixed/not-fixed item list for
-// each level, by matching the scenario's items against the items in the team's latest score.
+// levelVulnsForComp builds one team's fixed/not-fixed view for one competition (its scenario items
+// matched against the items in the team's latest score). Levels with no item list (Cisco) are skipped.
+func levelVulnsForComp(defs []lvLevelVulns, alias string, sc map[string]map[string]scoreEntry) []levelVulnView {
+	views := []levelVulnView{}
+	for _, ld := range defs {
+		if len(ld.Vulns) == 0 {
+			continue
+		}
+		have := map[string]bool{}
+		for _, vi := range sc[ld.Image][alias].Vulns.VulnItems {
+			have[normVuln(vi.VulnText)] = true
+		}
+		v := levelVulnView{Level: ld.Level, Name: ld.Name}
+		for _, d := range ld.Vulns {
+			st := vulnStat{Message: d.Message, Points: d.Points, Penalty: d.Points < 0, Found: have[normVuln(d.Message)]}
+			if !st.Penalty {
+				v.Total++
+				if st.Found {
+					v.Found++
+				}
+			}
+			v.Vulns = append(v.Vulns, st)
+		}
+		views = append(views, v)
+	}
+	return views
+}
+
+// practiceVulnViews: for the team page, each practice the team started -> its fixed/not-fixed view.
 func practiceVulnViews(alias string, prog []compProgress, sc map[string]map[string]scoreEntry) map[string][]levelVulnView {
 	out := map[string][]levelVulnView{}
 	for _, p := range prog {
@@ -816,30 +851,23 @@ func practiceVulnViews(alias string, prog []compProgress, sc map[string]map[stri
 		if err != nil {
 			continue
 		}
-		views := []levelVulnView{}
-		for _, ld := range defs {
-			if len(ld.Vulns) == 0 {
-				continue // a Cisco level has no server-side item list
-			}
-			have := map[string]bool{}
-			for _, vi := range sc[ld.Image][alias].Vulns.VulnItems {
-				have[normVuln(vi.VulnText)] = true
-			}
-			v := levelVulnView{Level: ld.Level, Name: ld.Name}
-			for _, d := range ld.Vulns {
-				st := vulnStat{Message: d.Message, Points: d.Points, Penalty: d.Points < 0, Found: have[normVuln(d.Message)]}
-				if !st.Penalty {
-					v.Total++
-					if st.Found {
-						v.Found++
-					}
-				}
-				v.Vulns = append(v.Vulns, st)
-			}
-			views = append(views, v)
+		if v := levelVulnsForComp(defs, alias, sc); len(v) > 0 {
+			out[p.Comp.ID] = v
 		}
-		if len(views) > 0 {
-			out[p.Comp.ID] = views
+	}
+	return out
+}
+
+// compTeamVulns: for one practice's page, each team's fixed/not-fixed view (keyed by team alias).
+func compTeamVulns(comp practiceComp, teams []string, sc map[string]map[string]scoreEntry) map[string][]levelVulnView {
+	defs, err := practiceVulnDefs(comp.ID)
+	if err != nil {
+		return map[string][]levelVulnView{}
+	}
+	out := map[string][]levelVulnView{}
+	for _, t := range teams {
+		if v := levelVulnsForComp(defs, t, sc); len(v) > 0 {
+			out[t] = v
 		}
 	}
 	return out

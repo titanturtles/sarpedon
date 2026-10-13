@@ -42,6 +42,26 @@
     <p>No team has started this practice yet.</p>
     {{ end }}
 
+    {{ if $.user }}
+    {{ range $r := .rows }}
+        {{ $tv := index $.teamVulns $r.Team }}
+        {{ if $tv }}
+        <details class="pc-tl pc-vd">
+            <summary>{{ $r.Team }}: vulnerabilities (admin)</summary>
+            {{ range $lv := $tv }}
+            <div class="pc-vd-h">{{ $lv.Name }} &middot; {{ $lv.Found }}/{{ $lv.Total }} fixed</div>
+            <ul class="pc-vd-list">
+                {{ range $v := $lv.Vulns }}
+                {{ if $v.Penalty }}<li class="{{ if $v.Found }}pc-v-pen{{ else }}pc-v-nopen{{ end }}">{{ if $v.Found }}&#9888; penalty incurred{{ else }}&#10003; no penalty{{ end }} &mdash; {{ $v.Message }} ({{ $v.Points }})</li>
+                {{ else }}<li class="{{ if $v.Found }}pc-v-ok{{ else }}pc-v-miss{{ end }}">{{ if $v.Found }}&#10003; fixed{{ else }}&#10007; not fixed{{ end }} &mdash; {{ $v.Message }} ({{ $v.Points }})</li>{{ end }}
+                {{ end }}
+            </ul>
+            {{ end }}
+        </details>
+        {{ end }}
+    {{ end }}
+    {{ end }}
+
     {{ if .timeline }}
     <h4 style="margin-top: 1.5rem;">Progress over time</h4>
     <p class="pc-sub">
