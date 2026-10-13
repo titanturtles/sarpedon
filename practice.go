@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/url"
 	"regexp"
 	"sort"
 	"strconv"
@@ -743,4 +744,103 @@ func viewPracticeJSON(c *gin.Context) {
 		out = append(out, gin.H{"team": alias, "practices": progress})
 	}
 	c.JSON(http.StatusOK, gin.H{"generated": time.Now().UTC().Format(time.RFC3339), "practices": practices, "teams": out})
+}
+
+// ---------------- admin per-vuln view (which practice vulns a team has / hasn't fixed) ----------------
+// The agent reports only the FOUND items (and any penalties incurred), so the full item list comes
+// from levelsvc (the scenario's checks). Admin-only: the not-fixed list would be an answer key.
+
+type lvVulnDef struct {
+	Message string `json:"message"`
+	Points  int    `json:"points"`
+}
+type lvLevelVulns struct {
+	Level int         `json:"level"`
+	Name  string      `json:"name"`
+	Image string      `json:"image"`
+	Vulns []lvVulnDef `json:"vulns"`
+}
+
+// vulnStat is one scored item with whether this team currently has it. For a penalty, Found means
+// the team triggered it (bad).
+type vulnStat struct {
+	Message string
+	Points  int
+	Penalty bool
+	Found   bool
+}
+type levelVulnView struct {
+	Level        int
+	Name         string
+	Found, Total int
+	Vulns        []vulnStat
+}
+
+var (
+	vulnDefMu    sync.Mutex
+	vulnDefCache = map[string][]lvLevelVulns{}
+	vulnDefAt    = map[string]time.Time{}
+)
+
+// practiceVulnDefs fetches a competition's scored-item list from levelsvc (cached 30s).
+func practiceVulnDefs(comp string) ([]lvLevelVulns, error) {
+	vulnDefMu.Lock()
+	defer vulnDefMu.Unlock()
+	if v, ok := vulnDefCache[comp]; ok && time.Since(vulnDefAt[comp]) < 30*time.Second {
+		return v, nil
+	}
+	if sarpConfig.LevelsvcToken == "" {
+		return nil, errors.New("levelsvc is not configured (levelsvcToken)")
+	}
+	var out struct {
+		Levels []lvLevelVulns `json:"levels"`
+	}
+	if err := lvGetJSON("/admin/vulns?comp="+url.QueryEscape(comp), &out); err != nil {
+		return nil, err
+	}
+	vulnDefCache[comp], vulnDefAt[comp] = out.Levels, time.Now()
+	return out.Levels, nil
+}
+
+// normVuln matches the agent's vuln-name transform (build_update replaces '-' with '/').
+func normVuln(s string) string {
+	return strings.TrimSpace(strings.ReplaceAll(s, "-", "/"))
+}
+
+// practiceVulnViews builds, per practice the team has started, the fixed/not-fixed item list for
+// each level, by matching the scenario's items against the items in the team's latest score.
+func practiceVulnViews(alias string, prog []compProgress, sc map[string]map[string]scoreEntry) map[string][]levelVulnView {
+	out := map[string][]levelVulnView{}
+	for _, p := range prog {
+		defs, err := practiceVulnDefs(p.Comp.ID)
+		if err != nil {
+			continue
+		}
+		views := []levelVulnView{}
+		for _, ld := range defs {
+			if len(ld.Vulns) == 0 {
+				continue // a Cisco level has no server-side item list
+			}
+			have := map[string]bool{}
+			for _, vi := range sc[ld.Image][alias].Vulns.VulnItems {
+				have[normVuln(vi.VulnText)] = true
+			}
+			v := levelVulnView{Level: ld.Level, Name: ld.Name}
+			for _, d := range ld.Vulns {
+				st := vulnStat{Message: d.Message, Points: d.Points, Penalty: d.Points < 0, Found: have[normVuln(d.Message)]}
+				if !st.Penalty {
+					v.Total++
+					if st.Found {
+						v.Found++
+					}
+				}
+				v.Vulns = append(v.Vulns, st)
+			}
+			views = append(views, v)
+		}
+		if len(views) > 0 {
+			out[p.Comp.ID] = views
+		}
+	}
+	return out
 }

@@ -148,6 +148,28 @@ pre {
         {{ end }}
     </tbody>
 </table>
+{{ if $.user }}
+{{ range $p := .practice }}
+    {{ $pv := index $.practiceVulns $p.Comp.ID }}
+    {{ if $pv }}
+    <details class="pc-tl pc-vd">
+        <summary>{{ $p.Comp.Name }}: vulnerabilities (admin)</summary>
+        {{ range $lv := $pv }}
+        <div class="pc-vd-h">{{ $lv.Name }} &middot; {{ $lv.Found }}/{{ $lv.Total }} fixed</div>
+        <ul class="pc-vd-list">
+            {{ range $v := $lv.Vulns }}
+            {{ if $v.Penalty }}
+                <li class="{{ if $v.Found }}pc-v-pen{{ else }}pc-v-nopen{{ end }}">{{ if $v.Found }}&#9888; penalty incurred{{ else }}&#10003; no penalty{{ end }} &mdash; {{ $v.Message }} ({{ $v.Points }})</li>
+            {{ else }}
+                <li class="{{ if $v.Found }}pc-v-ok{{ else }}pc-v-miss{{ end }}">{{ if $v.Found }}&#10003; fixed{{ else }}&#10007; not fixed{{ end }} &mdash; {{ $v.Message }} ({{ $v.Points }})</li>
+            {{ end }}
+            {{ end }}
+        </ul>
+        {{ end }}
+    </details>
+    {{ end }}
+{{ end }}
+{{ end }}
 {{ template "practice_chart.html" }}
 {{ range $p := .practice }}
 <details class="pc-tl" data-series="{{ index $.practiceTL $p.Comp.ID }}">

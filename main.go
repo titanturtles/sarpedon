@@ -173,9 +173,15 @@ func viewTeam(c *gin.Context) {
 	}
 	practice, practiceErr := []compProgress(nil), ""
 	practiceTL := map[string]string{}
+	practiceVulns := map[string][]levelVulnView{}
 	if len(practiceEntries) > 0 {
 		practice, practiceErr = teamPractice(teamData.Alias)
 		practiceTL = teamTimelines(teamData.Alias, practice)
+		if getUser(c) != "" { // admin only: the not-fixed list is an answer key
+			if sc, err := practiceScores(); err == nil {
+				practiceVulns = practiceVulnViews(teamData.Alias, practice, sc)
+			}
+		}
 	}
 	allRecords := getAll(teamName, "")
 	imageCopies := []imageData{}
@@ -212,7 +218,7 @@ func viewTeam(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "detail.html", pageData(c, "Scoreboard for "+teamName, gin.H{"data": teamScore, "team": teamData, "labels": labels, "images": images, "tz": sarpConfig.Timezone,
-		"practice": practice, "practiceErr": practiceErr, "practiceTL": practiceTL}))
+		"practice": practice, "practiceErr": practiceErr, "practiceTL": practiceTL, "practiceVulns": practiceVulns}))
 }
 
 func exportCsv(c *gin.Context) {
