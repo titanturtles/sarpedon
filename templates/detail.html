@@ -148,93 +148,10 @@ pre {
         {{ end }}
     </tbody>
 </table>
-{{ if $.user }}
-{{ range $p := .practice }}
-    {{ $pv := index $.practiceVulns $p.Comp.ID }}
-    {{ if $pv }}
-    <details class="pc-tl pc-vd" open>
-        <summary>{{ $p.Comp.Name }}: vulnerabilities (admin)</summary>
-        {{ range $lv := $pv }}
-        <div class="pc-vd-h">{{ $lv.Name }} &middot; {{ $lv.Found }}/{{ $lv.Total }} fixed</div>
-        <ul class="pc-vd-list">
-            {{ range $v := $lv.Vulns }}
-            {{ if $v.Penalty }}
-                <li class="{{ if $v.Found }}pc-v-pen{{ else }}pc-v-nopen{{ end }}">{{ if $v.Found }}&#9888; penalty incurred{{ else }}&#10003; no penalty{{ end }} &mdash; {{ $v.Message }} ({{ $v.Points }})</li>
-            {{ else }}
-                <li class="{{ if $v.Found }}pc-v-ok{{ else }}pc-v-miss{{ end }}">{{ if $v.Found }}&#10003; fixed{{ else }}&#10007; not fixed{{ end }} &mdash; {{ $v.Message }} ({{ $v.Points }})</li>
-            {{ end }}
-            {{ end }}
-        </ul>
-        {{ end }}
-    </details>
-    {{ end }}
-{{ end }}
-{{ end }}
-{{ template "practice_chart.html" }}
-{{ range $p := .practice }}
-<details class="pc-tl" data-series="{{ index $.practiceTL $p.Comp.ID }}">
-    <summary>{{ $p.Comp.Name }}: progress over time</summary>
-    <div class="pc-chart" style="height: 300px;"></div>
-</details>
-{{ end }}
-<script>
-// draw each module's chart the first time it's opened (a chart can't size itself while hidden)
-document.querySelectorAll("details.pc-tl").forEach(function (d) {
-    d.addEventListener("toggle", function () {
-        if (!d.open || d.dataset.drawn) return;
-        d.dataset.drawn = "1";
-        pcTimeline(d.querySelector(".pc-chart"), JSON.parse(d.dataset.series || "[]"));
-    });
-});
-</script>
 {{ else if .practiceErr }}
 <p style="color: #aab3bd;">Practice progress is unavailable right now ({{ .practiceErr }}).</p>
 {{ end }}
 
-{{ if .user }}
-    <br><br>
-    <h2>Information 👨‍🌾 🔫</h2>
-
-    {{ range $index, $image := $images }}
-    <br>
-        {{ if $image.Records }}
-            <div class="imgheader">
-                <h4 style="display:inline-block" id="info{{ $index }}">{{ $image.Name }}</h4>
-                <a href="/shell/{{ $team.ID }}/{{ $image.Name }}"><input type="submit" value="🐚"/></a>
-            </div>
-            {{ $selected := index $image.Records $image.Index }}
-            <form action="#info{{ $index }}">
-                <label>Record:
-                    <select name="record{{ $index }}">
-                            <option value="{{ $image.Index }}" selected>{{ (local $selected.Time).Format "2006-01-02 15:04:05 MST" }} (current)</option>
-                            {{ range $index1, $record := $image.Records }}
-                                {{ if not (eq $index1 $image.Index ) }}
-                                    <option value="{{ $index1 }}">{{ (local $record.Time).Format "2006-01-02 15:04:05 MST" }}</option>
-                                {{ end }}
-                            {{ end }}
-                    <select>
-                </label>
-                <input type="submit" value="✅"/>
-            </form>
-            <br>
-            <table class="table table-borderless table-dark table-striped">
-                <thead class="thead-dark">
-                    <th>Vuln Text</th>
-                    <th>Points</th>
-                </thead>
-                <tbody>
-                    {{ range $vuln := $selected.Vulns.VulnItems }}
-                    <tr>
-                        <td>{{ $vuln.VulnText }}</td>
-                        <td>{{ $vuln.VulnPoints }}</td>
-                    </tr>
-                    {{ end }}
-                </tbody>
-            </table>
-            <br>
-        {{ end }}
-    {{ end }}
-{{ end }}
 <br>
 <br>
 
