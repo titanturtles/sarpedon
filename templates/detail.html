@@ -129,10 +129,11 @@ pre {
 {{ if .practice }}
 {{ template "practice_style.html" }}
 <br><h4>Practice Progress</h4>
-<p class="pc-sub">Packet Tracer practice levels; they don't count toward the leaderboard. <a href="/practice">All practice &rarr;</a></p>
+<p class="pc-sub">Cisco, Windows and Linux practice levels; they don't count toward the leaderboard. <a href="/practice">All practice &rarr;</a></p>
 <table class="table table-borderless table-dark table-striped pc-grid">
     <thead class="thead-dark">
         <th>Practice</th>
+        <th>Category</th>
         <th>Cleared</th>
         <th>Levels</th>
     </thead>
@@ -140,12 +141,30 @@ pre {
         {{ range $p := .practice }}
         <tr>
             <td><a href="/practice/{{ $p.Comp.ID }}">{{ $p.Comp.Name }}</a></td>
+            <td><a class="pc-cat" href="/practice?cat={{ $p.Comp.Kind }}">{{ $p.Comp.Category }}</a></td>
             <td><span class="pc-badge {{ $p.Class }}">{{ $p.Done }} / {{ $p.Total }}</span></td>
             <td style="text-align: left;">{{ range $i, $cell := $p.Cells }}{{ $lv := index $p.Comp.Levels $i }}<span class="pc-chip {{ $cell.Class }}" title="{{ $lv.Name }}{{ if $cell.Started }}: {{ $cell.Pct }}%{{ end }}">L{{ $lv.Level }}{{ if $cell.Started }} {{ $cell.Pct }}%{{ end }}</span>{{ end }}</td>
         </tr>
         {{ end }}
     </tbody>
 </table>
+{{ template "practice_chart.html" }}
+{{ range $p := .practice }}
+<details class="pc-tl" data-series="{{ index $.practiceTL $p.Comp.ID }}">
+    <summary>{{ $p.Comp.Name }}: progress over time</summary>
+    <div class="pc-chart" style="height: 300px;"></div>
+</details>
+{{ end }}
+<script>
+// draw each module's chart the first time it's opened (a chart can't size itself while hidden)
+document.querySelectorAll("details.pc-tl").forEach(function (d) {
+    d.addEventListener("toggle", function () {
+        if (!d.open || d.dataset.drawn) return;
+        d.dataset.drawn = "1";
+        pcTimeline(d.querySelector(".pc-chart"), JSON.parse(d.dataset.series || "[]"));
+    });
+});
+</script>
 {{ else if .practiceErr }}
 <p style="color: #aab3bd;">Practice progress is unavailable right now ({{ .practiceErr }}).</p>
 {{ end }}

@@ -60,6 +60,7 @@ func main() {
 		routes.GET("/", viewScoreboard)
 		routes.GET("/announcements", viewAnnounce)
 	routes.GET("/practice", viewPractice)
+	routes.GET("/practice.json", viewPracticeJSON) // for the Discord bot
 	routes.GET("/practice/:comp", viewPracticeComp)
 		routes.GET("/status/:id/:image", getStatus)
 		routes.POST("/login", login)
@@ -171,8 +172,10 @@ func viewTeam(c *gin.Context) {
 		}
 	}
 	practice, practiceErr := []compProgress(nil), ""
+	practiceTL := map[string]string{}
 	if len(practiceEntries) > 0 {
 		practice, practiceErr = teamPractice(teamData.Alias)
+		practiceTL = teamTimelines(teamData.Alias, practice)
 	}
 	allRecords := getAll(teamName, "")
 	imageCopies := []imageData{}
@@ -209,7 +212,7 @@ func viewTeam(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "detail.html", pageData(c, "Scoreboard for "+teamName, gin.H{"data": teamScore, "team": teamData, "labels": labels, "images": images, "tz": sarpConfig.Timezone,
-		"practice": practice, "practiceErr": practiceErr}))
+		"practice": practice, "practiceErr": practiceErr, "practiceTL": practiceTL}))
 }
 
 func exportCsv(c *gin.Context) {

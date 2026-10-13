@@ -4,19 +4,23 @@
 
 <div>
     <h2>Practice</h2>
-    <p class="pc-sub">
-        Packet Tracer practice, one per course module. Practice scores don't count toward the leaderboard.
-        A level is cleared when Packet Tracer shows it complete.
-    </p>
     {{ if .err }}
     <div class="alert alert-dark">Practice is unavailable right now ({{ .err }}).</div>
+    {{ else }}
+    <!-- one tab per category -->
+    <div class="pc-tabs">
+        {{ range $t := .tabs }}<a class="pc-tab{{ if $t.Active }} pc-tab-on{{ end }}" href="/practice?cat={{ $t.Key }}">{{ $t.Name }} <span class="pc-n">{{ $t.Count }}</span></a>{{ end }}
+    </div>
+    <p class="pc-sub">{{ .cat.About }} Practice scores don't count toward the leaderboard.</p>
+    {{ if not .comps }}
+    <p>No {{ .cat.Name }} practices yet.</p>
     {{ else }}
 
     <!-- every practice, grouped by course unit -->
     <div class="pc-key">
         {{ range $u := .units }}
         <div class="pc-unit">
-            <span class="pc-unit-name">{{ if $u.Unit }}Unit {{ $u.Unit }}{{ else }}Other{{ end }}</span>
+            <span class="pc-unit-name">{{ $u.Label }}</span>
             {{ range $cp := $u.Comps }}<a class="pc-key-item" href="/practice/{{ $cp.ID }}">{{ $cp.Name }} <span class="pc-n">{{ len $cp.Levels }} level{{ if ne (len $cp.Levels) 1 }}s{{ end }}</span></a>{{ end }}
         </div>
         {{ end }}
@@ -33,7 +37,7 @@
                 <tr>
                     <th rowspan="2">Team</th>
                     <th rowspan="2">Cleared</th>
-                    {{ range $u := .units }}<th class="pc-uh" colspan="{{ len $u.Comps }}">{{ if $u.Unit }}Unit {{ $u.Unit }}{{ else }}Other{{ end }}</th>{{ end }}
+                    {{ range $u := .units }}<th class="pc-uh" colspan="{{ len $u.Comps }}">{{ $u.Label }}</th>{{ end }}
                 </tr>
                 <tr>
                     {{ range $cp := .comps }}<th class="pc-ch"><a href="/practice/{{ $cp.ID }}" title="{{ $cp.Name }}">{{ $cp.Short }}</a></th>{{ end }}
@@ -51,7 +55,8 @@
         </table>
     </div>
     {{ else }}
-    <p>No team has started a practice yet.</p>
+    <p>No team has started a {{ .cat.Name }} practice yet.</p>
+    {{ end }}
     {{ end }}
     {{ end }}
     <br><br>

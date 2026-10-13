@@ -10,8 +10,8 @@
     {{ $levels := .comp.Levels }}
     <h2>{{ .comp.Name }}</h2>
     <p class="pc-sub">
-        <a href="/practice">&larr; All practice</a>{{ if .comp.Unit }} &middot; Unit {{ .comp.Unit }}{{ end }} &middot; {{ len $levels }} level{{ if ne (len $levels) 1 }}s{{ end }}.
-        Each cell is that team's Packet Tracer completion; &#10003; = cleared.
+        <a href="/practice?cat={{ .cat.Key }}">&larr; {{ .cat.Name }} practice</a>{{ if .comp.Unit }} &middot; Unit {{ .comp.Unit }}{{ end }} &middot; {{ len $levels }} level{{ if ne (len $levels) 1 }}s{{ end }}.
+        Each cell is {{ .cat.Cell }}; &#10003; = cleared.
     </p>
     <ol class="pc-levels">
         {{ range $l := $levels }}<li value="{{ $l.Level }}">{{ $l.Name }}</li>{{ end }}
@@ -40,6 +40,17 @@
     </div>
     {{ else }}
     <p>No team has started this practice yet.</p>
+    {{ end }}
+
+    {{ if .timeline }}
+    <h4 style="margin-top: 1.5rem;">Progress over time</h4>
+    <p class="pc-sub">
+        Each line is a team's completion of this module (the average of its levels).
+        {{ if gt .timelineTeams (len .timeline) }}Showing the {{ len .timeline }} teams furthest along, of {{ .timelineTeams }}.{{ end }}
+    </p>
+    <div id="pc-module-timeline" style="height: 340px;"></div>
+    {{ template "practice_chart.html" }}
+    <script>pcTimeline(document.getElementById("pc-module-timeline"), {{ .timeline }});</script>
     {{ end }}
     {{ end }}
     <br><br>

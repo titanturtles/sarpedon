@@ -8,6 +8,8 @@ package main
 // levelsvc; progress comes from the latest scores in the scoreboard collection.
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"regexp"
@@ -18,6 +20,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func isPracticeImage(name string) bool {
@@ -56,7 +61,45 @@ type practiceComp struct {
 	Hidden   bool            `json:"hidden"`
 	Private  bool            `json:"private"`
 	Levels   []practiceLevel `json:"levelInfo"`
-	Short    string          `json:"-"` // column label, e.g. "13"
+	Kind     string          `json:"kind"` // category: cisco, windows or linux (levelsvc; empty = cisco)
+	Short    string          `json:"-"`    // column label, e.g. "13"
+}
+
+// practiceCategory is one tab on /practice. Cisco levels are Packet Tracer activities; Windows and
+// Linux levels are scenarios PT Comp sets up inside a student's practice VM.
+type practiceCategory struct {
+	Key, Name, About, Cell string
+}
+
+var practiceCategories = []practiceCategory{
+	{"cisco", "Cisco", "Packet Tracer practice, one per course module. A level is cleared when Packet Tracer shows it complete.",
+		"that team's Packet Tracer completion"},
+	{"windows", "Windows", "Windows 11 / Server practice: PT Comp sets the problems up in the student's Windows practice VM. " +
+		"A level is cleared when its problems are fixed.", "the share of that level's problems the team has fixed"},
+	{"linux", "Linux", "Linux practice: PT Comp sets the problems up in the student's Linux practice VM. " +
+		"A level is cleared when its problems are fixed.", "the share of that level's problems the team has fixed"},
+}
+
+// categoryOf returns a practice's category (an unknown kind counts as Cisco).
+func categoryOf(cp practiceComp) practiceCategory {
+	for _, pc := range practiceCategories {
+		if pc.Key == cp.Kind {
+			return pc
+		}
+	}
+	return practiceCategories[0]
+}
+
+// Category is the practice's category name, for templates ("Windows").
+func (cp practiceComp) Category() string { return categoryOf(cp).Name }
+
+func categoryIndex(cp practiceComp) int {
+	for i, pc := range practiceCategories {
+		if pc.Key == categoryOf(cp).Key {
+			return i
+		}
+	}
+	return 0
 }
 
 // Practice names: "U4.M13. VLANs" (unit 4, NetAcad module 13), "U16. HSRP · FHRP Concepts"
@@ -120,10 +163,14 @@ func fetchPractices() ([]practiceComp, error) {
 			continue
 		}
 		cp.Short = compShort(cp.Name)
+		cp.Kind = categoryOf(cp).Key
 		sort.SliceStable(cp.Levels, func(i, j int) bool { return cp.Levels[i].Level < cp.Levels[j].Level })
 		list = append(list, cp)
 	}
 	sort.SliceStable(list, func(i, j int) bool {
+		if ci, cj := categoryIndex(list[i]), categoryIndex(list[j]); ci != cj {
+			return ci < cj
+		}
 		ui, uj := list[i].Unit, list[j].Unit
 		if ui == 0 {
 			ui = 1 << 30 // no unit -> last
@@ -242,6 +289,7 @@ func progressFor(cp practiceComp, team string, sc map[string]map[string]scoreEnt
 
 type unitGroup struct {
 	Unit  int
+	Label string // "Unit 4"; practices without a unit: "Other" (Cisco) or the category name
 	Comps []practiceComp
 }
 
@@ -252,9 +300,57 @@ func groupByUnit(list []practiceComp) []unitGroup {
 			groups[n-1].Comps = append(groups[n-1].Comps, cp)
 			continue
 		}
-		groups = append(groups, unitGroup{Unit: cp.Unit, Comps: []practiceComp{cp}})
+		label := "Unit " + strconv.Itoa(cp.Unit)
+		if cp.Unit == 0 {
+			label = "Other"
+			if cat := categoryOf(cp); cat.Key != "cisco" {
+				label = cat.Name
+			}
+		}
+		groups = append(groups, unitGroup{Unit: cp.Unit, Label: label, Comps: []practiceComp{cp}})
 	}
 	return groups
+}
+
+type categoryTab struct {
+	practiceCategory
+	Count  int
+	Active bool
+}
+
+// practiceTabs picks the category to show (?cat=, else the first one with practices) and keeps
+// only its practices.
+func practiceTabs(all []practiceComp, want string) ([]categoryTab, practiceCategory, []practiceComp) {
+	count := map[string]int{}
+	for _, cp := range all {
+		count[cp.Kind]++
+	}
+	pick := practiceCategories[0]
+	found := false
+	for _, pc := range practiceCategories {
+		if pc.Key == want {
+			pick, found = pc, true
+		}
+	}
+	if !found {
+		for _, pc := range practiceCategories {
+			if count[pc.Key] > 0 {
+				pick = pc
+				break
+			}
+		}
+	}
+	tabs := []categoryTab{}
+	for _, pc := range practiceCategories {
+		tabs = append(tabs, categoryTab{pc, count[pc.Key], pc.Key == pick.Key})
+	}
+	list := []practiceComp{}
+	for _, cp := range all {
+		if cp.Kind == pick.Key {
+			list = append(list, cp)
+		}
+	}
+	return tabs, pick, list
 }
 
 type practiceRow struct {
@@ -264,13 +360,15 @@ type practiceRow struct {
 	Started     int
 }
 
-// viewPractice: teams x practices (grouped by unit), each cell = levels cleared / levels.
+// viewPractice: one category's tab (?cat=): teams x practices (grouped by unit), each cell =
+// levels cleared / levels.
 func viewPractice(c *gin.Context) {
-	list, err := fetchPractices()
+	all, err := fetchPractices()
 	if err != nil {
 		c.HTML(http.StatusOK, "practice.html", pageData(c, "Practice", gin.H{"err": err.Error()}))
 		return
 	}
+	tabs, cat, list := practiceTabs(all, c.Query("cat"))
 	sc, err := practiceScores()
 	if err != nil {
 		panic(err)
@@ -308,7 +406,7 @@ func viewPractice(c *gin.Context) {
 		return rows[i].Team < rows[j].Team
 	})
 	c.HTML(http.StatusOK, "practice.html", pageData(c, "Practice", gin.H{
-		"units": groupByUnit(list), "comps": list, "rows": rows, "levels": levels}))
+		"tabs": tabs, "cat": cat, "units": groupByUnit(list), "comps": list, "rows": rows, "levels": levels}))
 }
 
 type practiceCompRow struct {
@@ -364,7 +462,12 @@ func viewPracticeComp(c *gin.Context) {
 		}
 		return rows[i].Team < rows[j].Team
 	})
-	c.HTML(http.StatusOK, "practice_comp.html", pageData(c, "Practice: "+cp.Name, gin.H{"comp": cp, "rows": rows}))
+	series, nteams, terr := cachedModuleTimeline(*cp)
+	if terr != nil {
+		series = nil
+	}
+	c.HTML(http.StatusOK, "practice_comp.html", pageData(c, "Practice: "+cp.Name, gin.H{"comp": cp, "rows": rows,
+		"cat": categoryOf(*cp), "timeline": series, "timelineTeams": nteams}))
 }
 
 // teamPractice lists the practices a team has started, for the team page.
@@ -384,4 +487,260 @@ func teamPractice(alias string) ([]compProgress, string) {
 		}
 	}
 	return out, ""
+}
+
+// ---------------- timelines ----------------
+// Every report the PT agent sends is kept in the scores collection, so a practice's whole
+// history is there. The agent reports every few seconds while a student works, so the
+// series keep only the points where a value changes.
+
+type practicePoint struct {
+	Time  time.Time
+	Team  string // alias
+	Image string
+	Pct   int
+}
+
+var historyIndexOnce sync.Once
+
+// practiceHistory returns the reports for the given practice images (every team, or one
+// team by alias), oldest first, reduced to the fields the timelines need.
+func practiceHistory(images []string, teamAlias string) ([]practicePoint, error) {
+	if len(images) == 0 {
+		return nil, nil
+	}
+	initDatabase()
+	coll := mongoClient.Database(dbName).Collection("scores")
+	historyIndexOnce.Do(func() { // lets the image filter use an index instead of a full scan
+		coll.Indexes().CreateOne(context.TODO(), mongo.IndexModel{Keys: bson.D{{Key: "image.name", Value: 1}, {Key: "time", Value: 1}}})
+	})
+	filter := bson.M{"image.name": bson.M{"$in": images}}
+	if teamAlias != "" {
+		filter["team.alias"] = teamAlias
+	}
+	opts := options.Find().SetSort(bson.D{{Key: "time", Value: 1}}).SetProjection(bson.M{
+		"time": 1, "team.alias": 1, "image.name": 1, "vulns.vulnsscored": 1, "vulns.vulnstotal": 1, "points": 1})
+	cur, err := coll.Find(context.TODO(), filter, opts)
+	if err != nil {
+		return nil, err
+	}
+	var rows []scoreEntry
+	if err := cur.All(context.TODO(), &rows); err != nil {
+		return nil, err
+	}
+	out := make([]practicePoint, 0, len(rows))
+	for _, e := range rows {
+		out = append(out, practicePoint{Time: e.Time, Team: e.Team.Alias, Image: e.Image.Name, Pct: pctOf(e)})
+	}
+	return out, nil
+}
+
+type timeSeries struct {
+	Name string     `json:"name"`
+	Data [][2]int64 `json:"data"` // [unix ms, percent]
+}
+
+// extendToNow carries each series' last value to the present, so a step line shows where a
+// team stands now rather than stopping at its last change.
+func extendToNow(list []timeSeries) {
+	now := time.Now().UnixMilli()
+	for i := range list {
+		if d := list[i].Data; len(d) > 0 && d[len(d)-1][0] < now {
+			list[i].Data = append(d, [2]int64{now, d[len(d)-1][1]})
+		}
+	}
+}
+
+// moduleTimeline: one series per team = its completion of the whole module over time (the
+// mean of its level percentages). At most maxSeries teams: those furthest along, then the
+// earliest to get there. Returns the series and the number of teams that have started.
+func moduleTimeline(cp practiceComp, hist []practicePoint, maxSeries int) ([]timeSeries, int) {
+	n := len(cp.Levels)
+	if n == 0 {
+		return nil, 0
+	}
+	idx := map[string]int{}
+	for i, l := range cp.Levels {
+		idx[l.Image] = i
+	}
+	type state struct {
+		pcts    []int
+		last    int64
+		reached time.Time
+		s       timeSeries
+	}
+	teams := map[string]*state{}
+	for _, p := range hist {
+		i, ok := idx[p.Image]
+		if !ok {
+			continue
+		}
+		t := teams[p.Team]
+		if t == nil {
+			t = &state{pcts: make([]int, n), last: -1, s: timeSeries{Name: p.Team}}
+			teams[p.Team] = t
+		}
+		t.pcts[i] = p.Pct
+		sum := 0
+		for _, v := range t.pcts {
+			sum += v
+		}
+		if v := int64(sum / n); v != t.last {
+			t.s.Data = append(t.s.Data, [2]int64{p.Time.UnixMilli(), v})
+			t.last, t.reached = v, p.Time
+		}
+	}
+	all := make([]*state, 0, len(teams))
+	for _, t := range teams {
+		all = append(all, t)
+	}
+	sort.Slice(all, func(i, j int) bool {
+		if all[i].last != all[j].last {
+			return all[i].last > all[j].last
+		}
+		if !all[i].reached.Equal(all[j].reached) {
+			return all[i].reached.Before(all[j].reached)
+		}
+		return all[i].s.Name < all[j].s.Name
+	})
+	out := []timeSeries{}
+	for i, t := range all {
+		if i >= maxSeries {
+			break
+		}
+		out = append(out, t.s)
+	}
+	extendToNow(out)
+	return out, len(all)
+}
+
+// levelTimeline: one series per level a team has started (hist = that team's reports).
+func levelTimeline(cp practiceComp, hist []practicePoint) []timeSeries {
+	out := []timeSeries{}
+	for _, l := range cp.Levels {
+		s := timeSeries{Name: "L" + strconv.Itoa(l.Level) + " " + l.Name}
+		last := -1
+		for _, p := range hist {
+			if p.Image == l.Image && p.Pct != last {
+				s.Data = append(s.Data, [2]int64{p.Time.UnixMilli(), int64(p.Pct)})
+				last = p.Pct
+			}
+		}
+		if len(s.Data) > 0 {
+			out = append(out, s)
+		}
+	}
+	extendToNow(out)
+	return out
+}
+
+var (
+	timelineMu    sync.Mutex
+	timelineCache = map[string]struct {
+		at     time.Time
+		series []timeSeries
+		teams  int
+	}{}
+)
+
+// cachedModuleTimeline: the practice page is public, so its chart is cached for 30s.
+func cachedModuleTimeline(cp practiceComp) ([]timeSeries, int, error) {
+	timelineMu.Lock()
+	defer timelineMu.Unlock()
+	if c, ok := timelineCache[cp.ID]; ok && time.Since(c.at) < 30*time.Second {
+		return c.series, c.teams, nil
+	}
+	images := []string{}
+	for _, l := range cp.Levels {
+		images = append(images, l.Image)
+	}
+	hist, err := practiceHistory(images, "")
+	if err != nil {
+		return nil, 0, err
+	}
+	series, teams := moduleTimeline(cp, hist, 8) // 8 = the validated categorical palette
+	timelineCache[cp.ID] = struct {
+		at     time.Time
+		series []timeSeries
+		teams  int
+	}{time.Now(), series, teams}
+	return series, teams, nil
+}
+
+// teamTimelines: practice ID -> JSON of that team's per-level series, for the team page.
+func teamTimelines(alias string, prog []compProgress) map[string]string {
+	out := map[string]string{}
+	images := []string{}
+	for _, p := range prog {
+		for _, l := range p.Comp.Levels {
+			images = append(images, l.Image)
+		}
+	}
+	hist, err := practiceHistory(images, alias)
+	if err != nil {
+		return out
+	}
+	for _, p := range prog {
+		b, _ := json.Marshal(levelTimeline(p.Comp, hist))
+		out[p.Comp.ID] = string(b)
+	}
+	return out
+}
+
+// ---------------- machine-readable feed ----------------
+
+// viewPracticeJSON: practice structure + every team's progress (the same data as the
+// public Practice page), for the Discord bot.
+func viewPracticeJSON(c *gin.Context) {
+	list, err := fetchPractices()
+	if err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+		return
+	}
+	sc, err := practiceScores()
+	if err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+		return
+	}
+	practices := []gin.H{}
+	teams := map[string]bool{}
+	for _, cp := range list {
+		levels := []gin.H{}
+		for _, l := range cp.Levels {
+			levels = append(levels, gin.H{"level": l.Level, "name": l.Name, "threshold": l.Threshold})
+			for alias := range sc[l.Image] {
+				teams[alias] = true
+			}
+		}
+		practices = append(practices, gin.H{"id": cp.ID, "name": cp.Name, "unit": cp.Unit, "kind": cp.Kind, "levels": levels})
+	}
+	aliases := make([]string, 0, len(teams))
+	for a := range teams {
+		aliases = append(aliases, a)
+	}
+	sort.Strings(aliases)
+	out := []gin.H{}
+	for _, alias := range aliases {
+		progress := []gin.H{}
+		for _, cp := range list {
+			p := progressFor(cp, alias, sc)
+			if p.Started == 0 {
+				continue
+			}
+			cleared, pcts := []int{}, []int{}
+			for i, cell := range p.Cells {
+				if cell.Cleared {
+					cleared = append(cleared, cp.Levels[i].Level)
+				}
+				if cell.Started {
+					pcts = append(pcts, cell.Pct)
+				} else {
+					pcts = append(pcts, -1)
+				}
+			}
+			progress = append(progress, gin.H{"id": cp.ID, "done": p.Done, "total": p.Total, "cleared": cleared, "pct": pcts})
+		}
+		out = append(out, gin.H{"team": alias, "practices": progress})
+	}
+	c.JSON(http.StatusOK, gin.H{"generated": time.Now().UTC().Format(time.RFC3339), "practices": practices, "teams": out})
 }
