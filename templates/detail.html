@@ -152,7 +152,7 @@ pre {
 {{ range $p := .practice }}
     {{ $pv := index $.practiceVulns $p.Comp.ID }}
     {{ if $pv }}
-    <details class="pc-tl pc-vd">
+    <details class="pc-tl pc-vd" open>
         <summary>{{ $p.Comp.Name }}: vulnerabilities (admin)</summary>
         {{ range $lv := $pv }}
         <div class="pc-vd-h">{{ $lv.Name }} &middot; {{ $lv.Found }}/{{ $lv.Total }} fixed</div>
