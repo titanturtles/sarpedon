@@ -16,8 +16,9 @@ type config struct {
 	DiscordHook   string
 	Enforce       bool
 	Timeout       int
-	LevelsvcUrl   string // base URL of the levelsvc competition engine (default http://127.0.0.1:8099)
-	LevelsvcToken string // levelsvc admin token, for the creator web pages
+	LevelsvcUrl   string   // base URL of the levelsvc competition engine (default http://127.0.0.1:8099)
+	LevelsvcToken string   // levelsvc admin token, for the creator web pages
+	SprintMS      []string // Weekly Sprint: team aliases in the Middle School division (everyone else is High School); empty = built-in default
 	Admin         []adminData
 	Image         []imageData
 	Team          []teamData

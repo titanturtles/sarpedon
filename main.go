@@ -62,6 +62,7 @@ func main() {
 	routes.GET("/practice", viewPractice)
 	routes.GET("/practice.json", viewPracticeJSON) // for the Discord bot
 	routes.GET("/practice/:comp", viewPracticeComp)
+	routes.GET("/sprint", viewSprint)
 		routes.GET("/status/:id/:image", getStatus)
 		routes.POST("/login", login)
 		routes.POST("/update", scoreUpdate)
