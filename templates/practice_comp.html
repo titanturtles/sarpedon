@@ -31,7 +31,7 @@
                 {{ range $r := .rows }}
                 <tr>
                     <td><a href="/team/{{ $r.Team }}">{{ $r.Team }}</a></td>
-                    <td>{{ $r.Done }} / {{ len $levels }}</td>
+                    <td>{{ $r.ProgStr }} / {{ len $levels }}</td>
                     {{ range $i, $cell := $r.Cells }}<td class="pc-cell {{ $cell.Class }}" title="{{ (index $levels $i).Name }}">{{ if $cell.Started }}{{ $cell.Pct }}%{{ if $cell.Cleared }} &#10003;{{ end }}{{ else }}&ndash;{{ end }}</td>{{ end }}
                 </tr>
                 {{ end }}

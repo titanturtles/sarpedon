@@ -231,6 +231,34 @@ func cellFor(e scoreEntry, ok bool, threshold int) levelCell {
 	return c
 }
 
+// cellFrac is one level's fractional completion toward the leaderboard: a cleared level counts
+// as a whole 1.0, and a level still in progress counts its completion percentage (so 75% = 0.75).
+func cellFrac(c levelCell) float64 {
+	if c.Cleared {
+		return 1
+	}
+	p := c.Pct
+	if p > 100 {
+		p = 100
+	}
+	if p < 0 {
+		p = 0
+	}
+	return float64(p) / 100
+}
+
+// fmtProg renders a fractional level count for the board: whole numbers stay plain ("3"), and
+// fractions show up to two decimals with trailing zeros trimmed ("0.75", "2.5").
+func fmtProg(f float64) string {
+	s := strconv.FormatFloat(f, 'f', 2, 64)
+	s = strings.TrimRight(s, "0")
+	s = strings.TrimRight(s, ".")
+	if s == "" || s == "-0" {
+		s = "0"
+	}
+	return s
+}
+
 // practiceScores maps image -> team alias -> latest score, for practice images only.
 func practiceScores() (map[string]map[string]scoreEntry, error) {
 	top, err := getTop()
@@ -250,14 +278,19 @@ func practiceScores() (map[string]map[string]scoreEntry, error) {
 	return m, nil
 }
 
-// compProgress summarises one team's progress through one practice.
+// compProgress summarises one team's progress through one practice. Done counts fully-cleared
+// levels (for the badge colour and "module complete"); Prog is the fractional progress shown on
+// the board, where a partly-finished level counts its completion (75% done → 0.75).
 type compProgress struct {
 	Comp           practiceComp
 	Cells          []levelCell
 	Done, Started  int
 	Total          int
+	Prog           float64
 	Class, Summary string
 }
+
+func (p compProgress) ProgStr() string { return fmtProg(p.Prog) }
 
 func progressFor(cp practiceComp, team string, sc map[string]map[string]scoreEntry) compProgress {
 	p := compProgress{Comp: cp, Total: len(cp.Levels)}
@@ -270,6 +303,7 @@ func progressFor(cp practiceComp, team string, sc map[string]map[string]scoreEnt
 		if c.Cleared {
 			p.Done++
 		}
+		p.Prog += cellFrac(c)
 		p.Cells = append(p.Cells, c)
 	}
 	switch {
@@ -283,7 +317,7 @@ func progressFor(cp practiceComp, team string, sc map[string]map[string]scoreEnt
 		p.Class = "pc-started"
 	}
 	if p.Started > 0 {
-		p.Summary = strconv.Itoa(p.Done) + "/" + strconv.Itoa(p.Total)
+		p.Summary = fmtProg(p.Prog) + "/" + strconv.Itoa(p.Total)
 	}
 	return p
 }
@@ -358,8 +392,11 @@ type practiceRow struct {
 	Team        string
 	Cols        []compProgress
 	Done, Total int
+	Prog        float64
 	Started     int
 }
+
+func (r practiceRow) ProgStr() string { return fmtProg(r.Prog) }
 
 // viewPractice: one category's tab (?cat=): teams x practices (grouped by unit), each cell =
 // levels cleared / levels.
@@ -393,13 +430,14 @@ func viewPractice(c *gin.Context) {
 			p := progressFor(cp, alias, sc)
 			r.Cols = append(r.Cols, p)
 			r.Done += p.Done
+			r.Prog += p.Prog
 			r.Started += p.Started
 		}
 		rows = append(rows, r)
 	}
 	sort.SliceStable(rows, func(i, j int) bool {
-		if rows[i].Done != rows[j].Done {
-			return rows[i].Done > rows[j].Done
+		if rows[i].Prog != rows[j].Prog {
+			return rows[i].Prog > rows[j].Prog
 		}
 		if rows[i].Started != rows[j].Started {
 			return rows[i].Started > rows[j].Started
@@ -414,8 +452,11 @@ type practiceCompRow struct {
 	Team          string
 	Cells         []levelCell
 	Done, Started int
+	Prog          float64
 	PctSum        int
 }
+
+func (r practiceCompRow) ProgStr() string { return fmtProg(r.Prog) }
 
 // viewPracticeComp: one practice, teams x levels, each cell = completion %.
 func viewPracticeComp(c *gin.Context) {
@@ -448,15 +489,15 @@ func viewPracticeComp(c *gin.Context) {
 	rows := []practiceCompRow{}
 	for alias := range teams {
 		p := progressFor(*cp, alias, sc)
-		r := practiceCompRow{Team: alias, Cells: p.Cells, Done: p.Done, Started: p.Started}
+		r := practiceCompRow{Team: alias, Cells: p.Cells, Done: p.Done, Prog: p.Prog, Started: p.Started}
 		for _, cell := range p.Cells {
 			r.PctSum += cell.Pct
 		}
 		rows = append(rows, r)
 	}
 	sort.SliceStable(rows, func(i, j int) bool {
-		if rows[i].Done != rows[j].Done {
-			return rows[i].Done > rows[j].Done
+		if rows[i].Prog != rows[j].Prog {
+			return rows[i].Prog > rows[j].Prog
 		}
 		if rows[i].PctSum != rows[j].PctSum {
 			return rows[i].PctSum > rows[j].PctSum
@@ -747,7 +788,7 @@ func viewPracticeJSON(c *gin.Context) {
 					pcts = append(pcts, -1)
 				}
 			}
-			progress = append(progress, gin.H{"id": cp.ID, "done": p.Done, "total": p.Total, "cleared": cleared, "pct": pcts})
+			progress = append(progress, gin.H{"id": cp.ID, "done": p.Done, "progress": p.Prog, "total": p.Total, "cleared": cleared, "pct": pcts})
 		}
 		out = append(out, gin.H{"team": alias, "practices": progress})
 	}

@@ -47,8 +47,8 @@
                 {{ range $r := .rows }}
                 <tr>
                     <td><a href="/team/{{ $r.Team }}">{{ $r.Team }}</a></td>
-                    <td>{{ $r.Done }} / {{ $r.Total }}</td>
-                    {{ range $col := $r.Cols }}<td class="pc-cell {{ $col.Class }}"><a href="/practice/{{ $col.Comp.ID }}" title="{{ $col.Comp.Name }}: {{ $col.Done }} of {{ $col.Total }} levels cleared">{{ $col.Summary }}</a></td>{{ end }}
+                    <td>{{ $r.ProgStr }} / {{ $r.Total }}</td>
+                    {{ range $col := $r.Cols }}<td class="pc-cell {{ $col.Class }}"><a href="/practice/{{ $col.Comp.ID }}" title="{{ $col.Comp.Name }}: {{ $col.ProgStr }} of {{ $col.Total }} levels cleared">{{ $col.Summary }}</a></td>{{ end }}
                 </tr>
                 {{ end }}
             </tbody>

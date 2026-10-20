@@ -142,7 +142,7 @@ pre {
         <tr>
             <td><a href="/practice/{{ $p.Comp.ID }}">{{ $p.Comp.Name }}</a></td>
             <td><a class="pc-cat" href="/practice?cat={{ $p.Comp.Kind }}">{{ $p.Comp.Category }}</a></td>
-            <td><span class="pc-badge {{ $p.Class }}">{{ $p.Done }} / {{ $p.Total }}</span></td>
+            <td><span class="pc-badge {{ $p.Class }}">{{ $p.ProgStr }} / {{ $p.Total }}</span></td>
             <td style="text-align: left;">{{ range $i, $cell := $p.Cells }}{{ $lv := index $p.Comp.Levels $i }}<span class="pc-chip {{ $cell.Class }}" title="{{ $lv.Name }}{{ if $cell.Started }}: {{ $cell.Pct }}%{{ end }}">L{{ $lv.Level }}{{ if $cell.Started }} {{ $cell.Pct }}%{{ end }}</span>{{ end }}</td>
         </tr>
         {{ end }}

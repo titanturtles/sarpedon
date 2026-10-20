@@ -112,15 +112,21 @@ func vmWeekTheme(name string) string {
 
 type sprintCell struct {
 	Done, Total, Started int
+	Prog                 float64
 	Class, Summary       string
 }
+
+func (c sprintCell) ProgStr() string { return fmtProg(c.Prog) }
 
 type sprintTeamRow struct {
 	Team        string
 	Division    string
 	Cells       []sprintCell
 	Done, Total int
+	Prog        float64
 }
+
+func (r sprintTeamRow) ProgStr() string { return fmtProg(r.Prog) }
 
 type sprintWeekCol struct {
 	Week  int
@@ -142,6 +148,7 @@ func sprintCellFor(comps []practiceComp, alias string, sc map[string]map[string]
 		p := progressFor(cp, alias, sc)
 		cell.Done += p.Done
 		cell.Total += p.Total
+		cell.Prog += p.Prog
 		cell.Started += p.Started
 	}
 	switch {
@@ -155,15 +162,15 @@ func sprintCellFor(comps []practiceComp, alias string, sc map[string]map[string]
 		cell.Class = "pc-started"
 	}
 	if cell.Started > 0 {
-		cell.Summary = strconv.Itoa(cell.Done) + "/" + strconv.Itoa(cell.Total)
+		cell.Summary = fmtProg(cell.Prog) + "/" + strconv.Itoa(cell.Total)
 	}
 	return cell
 }
 
 func sortSprintRows(rows []sprintTeamRow) {
 	sort.SliceStable(rows, func(i, j int) bool {
-		if rows[i].Done != rows[j].Done {
-			return rows[i].Done > rows[j].Done
+		if rows[i].Prog != rows[j].Prog {
+			return rows[i].Prog > rows[j].Prog
 		}
 		return rows[i].Team < rows[j].Team
 	})
@@ -203,6 +210,7 @@ func buildCiscoDivision(name, key, about string, weeks []sprintWeek, byUnit map[
 			cell := sprintCellFor(weekComps[i], alias, sc)
 			r.Cells = append(r.Cells, cell)
 			r.Done += cell.Done
+			r.Prog += cell.Prog
 			r.Total += cell.Total
 		}
 		d.Rows = append(d.Rows, r)
@@ -249,6 +257,7 @@ func buildVMSection(byWeek map[int][]practiceComp, sc map[string]map[string]scor
 			cell := sprintCellFor(weekComps[i], alias, sc)
 			r.Cells = append(r.Cells, cell)
 			r.Done += cell.Done
+			r.Prog += cell.Prog
 			r.Total += cell.Total
 		}
 		d.Rows = append(d.Rows, r)

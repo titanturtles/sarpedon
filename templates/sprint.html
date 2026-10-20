@@ -50,8 +50,8 @@
                     {{ range $r := $d.Rows }}
                     <tr>
                         <td><a href="/team/{{ $r.Team }}">{{ $r.Team }}</a></td>
-                        <td>{{ $r.Done }} / {{ $r.Total }}</td>
-                        {{ range $c := $r.Cells }}<td class="pc-cell {{ $c.Class }}" title="{{ $c.Done }} of {{ $c.Total }} levels cleared">{{ $c.Summary }}</td>{{ end }}
+                        <td>{{ $r.ProgStr }} / {{ $r.Total }}</td>
+                        {{ range $c := $r.Cells }}<td class="pc-cell {{ $c.Class }}" title="{{ $c.ProgStr }} of {{ $c.Total }} levels cleared">{{ $c.Summary }}</td>{{ end }}
                     </tr>
                     {{ end }}
                 </tbody>
@@ -95,8 +95,8 @@
                     <tr>
                         <td><a href="/team/{{ $r.Team }}">{{ $r.Team }}</a></td>
                         <td><span class="sp-div-badge">{{ $r.Division }}</span></td>
-                        <td>{{ $r.Done }} / {{ $r.Total }}</td>
-                        {{ range $c := $r.Cells }}<td class="pc-cell {{ $c.Class }}" title="{{ $c.Done }} of {{ $c.Total }} levels cleared">{{ $c.Summary }}</td>{{ end }}
+                        <td>{{ $r.ProgStr }} / {{ $r.Total }}</td>
+                        {{ range $c := $r.Cells }}<td class="pc-cell {{ $c.Class }}" title="{{ $c.ProgStr }} of {{ $c.Total }} levels cleared">{{ $c.Summary }}</td>{{ end }}
                     </tr>
                     {{ end }}
                 </tbody>
