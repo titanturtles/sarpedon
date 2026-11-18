@@ -48,7 +48,7 @@ func TestWithDisplayAliasFixesEveryScore(t *testing.T) {
 	sarpConfig.Team = []teamData{{ID: "u1", Alias: "alice"}}
 	defer func() { sarpConfig.Team = nil }()
 	got := withDisplayAlias([]scoreEntry{{Team: teamData{ID: "u1", Alias: "u1"}}, {Team: teamData{ID: "u2", Alias: "u2"}}})
-	if got[0].Team.Alias != "alice" || got[1].Team.Alias != "u2" {
+	if got[0].Team.Alias != "alice" || got[1].Team.Alias != publicName("u2", "") {
 		t.Fatalf("got %+v", got)
 	}
 }

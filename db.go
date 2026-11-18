@@ -289,11 +289,10 @@ func getCsv() string {
 	if err != nil {
 		panic(err)
 	}
-	csvString := "Email,Alias,Team ID,Image,Score,Play Time,Elapsed Time\n"
+	csvString := "Email,Alias,Image,Score,Play Time,Elapsed Time\n"
 	for _, score := range teamScores {
 		csvString += score.Team.Email + ","
 		csvString += score.Team.Alias + ","
-		csvString += score.Team.ID + ","
 		csvString += score.Image.Name + ","
 		csvString += fmt.Sprintf("%d,", score.Points)
 		csvString += formatTime(score.PlayTime) + ","
